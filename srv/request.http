@@ -1,0 +1,51 @@
+### Upload Excel File
+POST http://localhost:3030/api/planning/upload
+Content-Type: multipart/form-data; boundary=----BOUNDARY
+
+------BOUNDARY
+Content-Disposition: form-data; name="file"; filename="sample_data.xlsx"
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+< ./public/sample_data.xlsx
+------BOUNDARY--
+
+###
+POST http://localhost:3030/api/planning/generate-sample
+Content-Type: application/json
+
+{
+	  "planningStartDate": "2025-05-29",
+      "minEarlyDeliveryDays": 7
+
+}
+
+
+###
+POST http://localhost:3030/api/planning/optimize
+Content-Type: application/json
+
+{     
+     "planningSystem":{}, 
+     "populationSize": 100,
+     "generations": 300,
+     "mutationRate": 0.2,
+     "crossoverRate": 0.8
+}
+
+
+###
+GET http://localhost:3030/api/planning/download-sample
+Content-Type: application/json
+
+{
+	 
+}
+
+
+###
+GET http://localhost:3030/api/planning/download-results
+Content-Type: application/json
+
+{
+	 
+}
