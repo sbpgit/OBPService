@@ -23,10 +23,8 @@ router.post('/generate-sample', async (req, res) => {
 
 
     const excelHandler = new ExcelHandler();
-    // const filePath = path.join('.','public', 'sample_data.xlsx');
     const publicDir = path.join(__dirname, '..', 'public');
     const filePath = path.join(publicDir, 'sample_data.xlsx');
-    // const filePath = path.join(__dirname, '..', 'tmp', 'sample_data.xlsx');
     await excelHandler.createSampleDataFile(planningSystem, filePath);
     res.setHeader('Content-Disposition', `attachment; filename="sample_data.xlsx"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
