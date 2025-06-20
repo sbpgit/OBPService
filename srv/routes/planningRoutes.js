@@ -10,7 +10,7 @@ const GeneticAlgorithmOptimizer = require(path.resolve(__dirname, '../optimizati
 const ResultsAnalyzer = require(path.resolve(__dirname, '../analysis/ResultsAnalyzer'));
 const ExcelHandler = require(path.resolve(__dirname, '../utils/ExcelHandler'));
 const Logger = require(path.resolve(__dirname, '../utils/Logger'));
-
+const JobManager = require(path.resolve(__dirname, '../jobs/JobManager'));
 const upload = multer({ dest: 'uploads/' });
 const logger = Logger.getInstance();
 // Generate sample data
@@ -28,7 +28,7 @@ router.post('/generate-sample', async (req, res) => {
     await excelHandler.createSampleDataFile(planningSystem, filePath);
     res.setHeader('Content-Disposition', `attachment; filename="sample_data.xlsx"`);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-   
+
     console.log("Data created");
     // await excelHandler.streamExcelToResponse(res, data);
     console.log("Response");
@@ -88,7 +88,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       success: true,
       message: 'File processed successfully',
       summary: {
-        planningSystem : planningSystem.toJSON(),
+        planningSystem: planningSystem.toJSON(),
         products: planningSystem.products.size,
         salesOrders: planningSystem.salesOrders.size,
         lineRestrictions: planningSystem.lineRestrictions.size,
@@ -112,90 +112,204 @@ router.post('/upload', upload.single('file'), async (req, res) => {
 });
 
 // Run optimization
+// router.post('/optimize', async (req, res) => {
+//   try {
+//     const {
+//       planningSystem: planningSystemJSON,
+//       planningStartDate,
+//       minEarlyDeliveryDays = 7,
+//       populationSize = 100,
+//       generations = 50,
+//       mutationRate = 0.1,
+//       crossoverRate = 0.8
+//     } = req.body;
+
+//     // Create or load planning system
+//     let planningSystem;
+//     if (planningSystemJSON && Object.keys(planningSystemJSON).length>0) {
+//       planningSystem = router.createPlanningSystemFromJSON(planningSystemJSON);
+//     } else {
+//       planningSystem = new OrderPlanningSystem(planningStartDate, minEarlyDeliveryDays);
+//       planningSystem.loadSampleData();
+//     }
+
+//     logger.info('Starting optimization process...');
+
+//     // Run genetic algorithm optimization
+//     const optimizer = new GeneticAlgorithmOptimizer(planningSystem, {
+//       populationSize,
+//       generations,
+//       mutationRate,
+//       crossoverRate
+//     });
+
+//     const optimizationResult = await optimizer.optimize();
+
+//     // Analyze results
+//     const analyzer = new ResultsAnalyzer(planningSystem);
+//     const analysisResults = analyzer.analyzeSolution(optimizationResult.bestSolution);
+
+//     // Generate comparison report
+//     const comparisonReport = analyzer.generateComparisonReport(analysisResults);
+
+//     // Create Excel results file
+//     const excelHandler = new ExcelHandler();
+//     const publicDir = path.join(__dirname, '..', 'public');
+//     const resultsFilePath = path.join(publicDir, 'optimization_results.xlsx');
+
+//     await excelHandler.createResultsFile(
+//       analysisResults,
+//       optimizationResult.bestSolution,
+//       optimizationResult.fitnessHistory,
+//       resultsFilePath
+//     );
+//     res.setHeader('Content-Disposition', 'attachment; filename="optimization_results.xlsx"');
+//     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+//     // await excelHandler.streamResultsToResponse(
+//     //   res,
+//     //   analysisResults,
+//     //   optimizationResult.bestSolution,
+//     //   optimizationResult.fitnessHistory
+//     // );
+//     // res.download(filePath, 'optimization_results.xlsx');
+//     res.json({
+//       success: true,
+//       message: 'Optimization completed successfully',
+//       results: {
+//         summary: comparisonReport.summary,
+//         performanceMetrics: comparisonReport.performanceMetrics,
+//         priorityBreakdown: comparisonReport.priorityBreakdown,
+//         capacityUtilization: comparisonReport.capacityUtilization,
+//         finalFitness: optimizationResult.finalFitness,
+//         generations: optimizationResult.fitnessHistory.length
+//       },
+//       downloadUrl: '/static/optimization_results.xlsx'
+//     });
+
+//   } catch (error) {
+//     logger.error('Error during optimization:', error);
+//     res.status(200).json({
+//       success: false,
+//       error: 'Optimization failed',
+//       message: error.message
+//     });
+//   }
+// });
+
+// Start async optimization
 router.post('/optimize', async (req, res) => {
-  try {
-    const {
-      planningSystem: planningSystemJSON,
-      planningStartDate,
-      minEarlyDeliveryDays = 7,
-      populationSize = 100,
-      generations = 50,
-      mutationRate = 0.1,
-      crossoverRate = 0.8
-    } = req.body;
+  console.time('💡 Total Handler Time');
+  console.time('🔧 Planning System Init');
+  console.time('📥 Request Processing');
+  const {
+    planningSystem: planningSystemJSON,
+    planningStartDate,
+    minEarlyDeliveryDays = 7,
+    populationSize = 100,
+    generations = 50,
+    mutationRate = 0.1,
+    crossoverRate = 0.8
+  } = req.body;
+  console.timeEnd('📥 Request Processing');
+  console.time('🏗️ JSON to Planning System');
+  let planningSystem = (planningSystemJSON && Object.keys(planningSystemJSON).length > 0)
+        ? router.createPlanningSystemFromJSON(planningSystemJSON)
+        : new OrderPlanningSystem(planningStartDate, minEarlyDeliveryDays);
+        console.timeEnd('🏗️ JSON to Planning System');
+        console.time('📊 Load Sample Data');
+      if (!planningSystemJSON) planningSystem.loadSampleData();
+      console.timeEnd('📊 Load Sample Data');
+      console.timeEnd('🔧 Planning System Init');
+  
+  console.time('🧠 Optimizer Init');
+  const optimizer = new GeneticAlgorithmOptimizer(planningSystem, {
+    populationSize, generations, mutationRate, crossoverRate
+  });
+  console.timeEnd('🧠 Optimizer Init');
+  console.time('📦 Job Creation');
+  const jobId = JobManager.createJob(optimizer);
+  console.timeEnd('📦 Job Creation');
+  console.time('📤 Sending Response');
+  res.json({ success: true, jobId });
+  res.end();
+  console.timeEnd('📤 Sending Response');
+  console.timeEnd('💡 Total Handler Time'); 
+  
+  // ✅ Fire-and-forget background execution
+  setImmediate(() => {
+  (async () => {
+    try {
+      console.time('🧵 Background Optimization');
+      const optimizationResult = await optimizer.optimize();
+      const analyzer = new ResultsAnalyzer(planningSystem);
+      const analysisResults = analyzer.analyzeSolution(optimizationResult.bestSolution);
+      const comparisonReport = analyzer.generateComparisonReport(analysisResults);
 
-    // Create or load planning system
-    let planningSystem;
-    if (planningSystemJSON && Object.keys(planningSystemJSON).length>0) {
-      planningSystem = router.createPlanningSystemFromJSON(planningSystemJSON);
-    } else {
-      planningSystem = new OrderPlanningSystem(planningStartDate, minEarlyDeliveryDays);
-      planningSystem.loadSampleData();
-    }
+      const excelHandler = new ExcelHandler();
+      const publicDir = path.join(__dirname, '..', 'public');
+      const resultsFilePath = path.join(publicDir, 'optimization_results.xlsx');
 
-    logger.info('Starting optimization process...');
+      await excelHandler.createResultsFile(
+        analysisResults,
+        optimizationResult.bestSolution,
+        optimizationResult.fitnessHistory,
+        resultsFilePath
+      );
 
-    // Run genetic algorithm optimization
-    const optimizer = new GeneticAlgorithmOptimizer(planningSystem, {
-      populationSize,
-      generations,
-      mutationRate,
-      crossoverRate
-    });
-
-    const optimizationResult = await optimizer.optimize();
-
-    // Analyze results
-    const analyzer = new ResultsAnalyzer(planningSystem);
-    const analysisResults = analyzer.analyzeSolution(optimizationResult.bestSolution);
-
-    // Generate comparison report
-    const comparisonReport = analyzer.generateComparisonReport(analysisResults);
-
-    // Create Excel results file
-    const excelHandler = new ExcelHandler();
-    const publicDir = path.join(__dirname, '..', 'public');
-    const resultsFilePath = path.join(publicDir, 'optimization_results.xlsx');
-
-    await excelHandler.createResultsFile(
-      analysisResults,
-      optimizationResult.bestSolution,
-      optimizationResult.fitnessHistory,
-      resultsFilePath
-    );
-    res.setHeader('Content-Disposition', 'attachment; filename="optimization_results.xlsx"');
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-
-    // await excelHandler.streamResultsToResponse(
-    //   res,
-    //   analysisResults,
-    //   optimizationResult.bestSolution,
-    //   optimizationResult.fitnessHistory
-    // );
-    // res.download(filePath, 'optimization_results.xlsx');
-    res.json({
-      success: true,
-      message: 'Optimization completed successfully',
-      results: {
+      JobManager.setCompleted(jobId, {
         summary: comparisonReport.summary,
         performanceMetrics: comparisonReport.performanceMetrics,
         priorityBreakdown: comparisonReport.priorityBreakdown,
         capacityUtilization: comparisonReport.capacityUtilization,
         finalFitness: optimizationResult.finalFitness,
-        generations: optimizationResult.fitnessHistory.length
-      },
-      downloadUrl: '/static/optimization_results.xlsx'
-    });
-
-  } catch (error) {
-    logger.error('Error during optimization:', error);
-    res.status(200).json({
-      success: false,
-      error: 'Optimization failed',
-      message: error.message
-    });
-  }
+        generations: optimizationResult.fitnessHistory.length,
+        downloadUrl: '/static/optimization_results.xlsx'
+      });
+    } catch (err) {
+      if (err.message.includes('cancelled')) {
+        console.log('🛑 Optimization was cancelled');
+        JobManager.setError(jobId, 'Optimization was cancelled by user');
+      } else {
+        console.error('❌ Optimization failed:', err);
+        JobManager.setError(jobId, err.message);
+      }
+      // JobManager.setError(jobId, err.message);
+    }
+    console.timeEnd('🧵 Background Optimization');
+    
+  })(); // ⬅️ Do NOT `await` this!
 });
+
+});
+
+
+// Polling status
+router.get('/optimize/status/:jobId', (req, res) => {
+  const job = JobManager.getJob(req.params.jobId);
+  if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
+
+  res.json({
+    success: true,
+    status: job.status,
+    result: job.status === 'completed' ? job.result : null,
+    error: job.status === 'error' ? job.error : null
+  });
+});
+
+// Cancel job
+router.post('/optimize/stop', (req, res) => {
+
+  const { fullJobId } = req.body;
+  console.log("JobId :",fullJobId);
+  const job = JobManager.getJob(fullJobId);
+  // console.log(job);
+  if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
+
+  JobManager.cancelJob(fullJobId);
+  res.json({ success: true, message: 'Job cancelled' });
+});
+
 
 // Helper methods
 router.createPlanningSystemFromExcel = async function (data, planningStartDate, minEarlyDeliveryDays) {
@@ -205,9 +319,9 @@ router.createPlanningSystemFromExcel = async function (data, planningStartDate, 
   if (data.Products) {
     data.Products.forEach(product => {
       planningSystem.addProduct({
-        productId: product.Product_ID || product.productId ||product["Product Id"],
-        productName: product.Product_Name || product.productName||product["Product Name"],
-        productDescription: product.Product_Description || product.productDescription||product["Product Description"]
+        productId: product.Product_ID || product.productId || product["Product Id"],
+        productName: product.Product_Name || product.productName || product["Product Name"],
+        productDescription: product.Product_Description || product.productDescription || product["Product Description"]
       });
     });
   }
@@ -216,10 +330,10 @@ router.createPlanningSystemFromExcel = async function (data, planningStartDate, 
   if (data.Line_Restrictions && data.Weekly_Capacity) {
     const capacityMap = {};
     data.Weekly_Capacity.forEach(capacity => {
-      if (!capacityMap[capacity.Restriction_Name || capacity.restrictionName|| "Restriction Name"]) {
-        capacityMap[capacity.Restriction_Name || capacity.restrictionName||"Restriction Name"] = {};
+      if (!capacityMap[capacity.Restriction_Name || capacity.restrictionName || "Restriction Name"]) {
+        capacityMap[capacity.Restriction_Name || capacity.restrictionName || "Restriction Name"] = {};
       }
-      capacityMap[capacity.Restriction_Name || capacity.restrictionName|| "Restriction Name"][capacity.Week || capacity.week] =
+      capacityMap[capacity.Restriction_Name || capacity.restrictionName || "Restriction Name"][capacity.Week || capacity.week] =
         capacity.Capacity || capacity.capacity;
     });
 
@@ -228,7 +342,7 @@ router.createPlanningSystemFromExcel = async function (data, planningStartDate, 
       planningSystem.addLineRestriction({
         restrictionName: name,
         validity: restriction.Validity !== undefined ? restriction.Validity : restriction.validity,
-        penaltyCost: restriction.Penalty_Cost || restriction.penaltyCost|| restriction["Penalty Cost"],
+        penaltyCost: restriction.Penalty_Cost || restriction.penaltyCost || restriction["Penalty Cost"],
         weeklyCapacity: capacityMap[name] || {}
       });
     });
@@ -237,12 +351,12 @@ router.createPlanningSystemFromExcel = async function (data, planningStartDate, 
   // Load operations
   if (data.Operations) {
     data.Operations.forEach(operation => {
-      const alternates = (operation.Alternate_Line_Restrictions || operation.alternateLineRestrictions || ''|| operation["Alternate Line Restrictions"])
+      const alternates = (operation.Alternate_Line_Restrictions || operation.alternateLineRestrictions || '' || operation["Alternate Line Restrictions"])
         .split(',').map(s => s.trim()).filter(s => s);
 
       planningSystem.addOperation({
         operationId: operation.Operation_ID || operation.operationId || operation["Operation Id"],
-        primaryLineRestriction: operation.Primary_Line_Restriction || operation.primaryLineRestriction|| operation["Primary Line Restriction"],
+        primaryLineRestriction: operation.Primary_Line_Restriction || operation.primaryLineRestriction || operation["Primary Line Restriction"],
         alternateLineRestrictions: alternates
       });
     });
@@ -251,11 +365,11 @@ router.createPlanningSystemFromExcel = async function (data, planningStartDate, 
   // Load sales orders
   if (data.Sales_Orders) {
     data.Sales_Orders.forEach(order => {
-      const operations = (order.Operations || order.operations ||'')
+      const operations = (order.Operations || order.operations || '')
         .split(',').map(s => s.trim()).filter(s => s);
 
       const components = {};
-      const componentsStr = order.Components_Required || order.componentsRequired ||order["Components Required"]|| '';
+      const componentsStr = order.Components_Required || order.componentsRequired || order["Components Required"] || '';
       if (componentsStr) {
         componentsStr.split(',').forEach(comp => {
           const [name, qty] = comp.split(':').map(s => s.trim());
@@ -266,13 +380,13 @@ router.createPlanningSystemFromExcel = async function (data, planningStartDate, 
       }
 
       planningSystem.addSalesOrder({
-        orderNumber: order.Order_Number || order.orderNumber||order["Order Number"],
-        productId: order.Product_ID || order.productId||order["Product Id"],
-        orderPromiseDate: order.Order_Promise_Date || order.orderPromiseDate||order["Order Promise Date"],
-        orderQty: order.Order_Qty || order.orderQty ||order["Order Qty"],
+        orderNumber: order.Order_Number || order.orderNumber || order["Order Number"],
+        productId: order.Product_ID || order.productId || order["Product Id"],
+        orderPromiseDate: order.Order_Promise_Date || order.orderPromiseDate || order["Order Promise Date"],
+        orderQty: order.Order_Qty || order.orderQty || order["Order Qty"],
         revenue: order.Revenue || order.revenue,
         cost: order.Cost || order.cost,
-        customerPriority: order.Customer_Priority || order.customerPriority ||order["Customer Priority"],
+        customerPriority: order.Customer_Priority || order.customerPriority || order["Customer Priority"],
         operations: operations,
         components: components
       });
@@ -283,9 +397,9 @@ router.createPlanningSystemFromExcel = async function (data, planningStartDate, 
   if (data.Penalty_Rules) {
     data.Penalty_Rules.forEach(rule => {
       planningSystem.addPenaltyRule({
-        customerPriority: rule.Customer_Priority || rule.customerPriority ||rule["Customer Priority"],
+        customerPriority: rule.Customer_Priority || rule.customerPriority || rule["Customer Priority"],
         productId: rule.Product_ID || rule.productId || rule["Product Id"],
-        lateDeliveryPenalty: rule.Late_Delivery_Penalty || rule.lateDeliveryPenalty|| rule["Late Delivery Penalty"],
+        lateDeliveryPenalty: rule.Late_Delivery_Penalty || rule.lateDeliveryPenalty || rule["Late Delivery Penalty"],
         noFulfillmentPenalty: rule.No_Fulfillment_Penalty || rule.noFulfillmentPenalty || rule["No Fulfillment Penalty"]
       });
     });

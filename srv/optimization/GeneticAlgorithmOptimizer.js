@@ -12,9 +12,12 @@ class GeneticAlgorithmOptimizer {
     this.mutationRate = options.mutationRate || 0.1;
     this.crossoverRate = options.crossoverRate || 0.8;
     this.tournamentSize = options.tournamentSize || 3;
-    this.logger = Logger.getInstance();
+    // this.logger = Logger.getInstance();
   }
-
+  cancel() {
+    this.cancelled = true;
+    console.log("Job Cancellation called");
+  }
   createIndividual() {
     const individual = {};
     const earliestWeek = this.system.getEarliestSchedulableWeekIndex();
@@ -199,11 +202,15 @@ class GeneticAlgorithmOptimizer {
   }
 
   async optimize() {
-    this.logger.info('Starting genetic algorithm optimization...');
+    // this.logger.info('Starting genetic algorithm optimization...');
+    console.log('Starting genetic algorithm optimization...');
     
     // Initialize population
     let population = [];
     for (let i = 0; i < this.populationSize; i++) {
+      if (this.cancelled) {
+        throw new Error('Optimization was cancelled');
+      }
       population.push(this.createIndividual());
     }
 
@@ -212,8 +219,17 @@ class GeneticAlgorithmOptimizer {
     let bestFitness = -Infinity;
 
     for (let generation = 0; generation < this.generations; generation++) {
+      await new Promise(resolve => setImmediate(resolve));
+      if (this.cancelled){
+        console.log(`🛑 Optimization cancelled at generation ${generation + 1}`);
+        throw new Error('Optimization was cancelled');
+        };
       // Calculate fitness for all individuals
-      const fitnessScores = population.map(individual => this.calculateFitness(individual));
+      const fitnessScores = population.map(individual => {
+        if (this.cancelled) {
+          throw new Error('Optimization was cancelled');
+        }
+        return this.calculateFitness(individual)});
       
       const currentBestFitness = Math.max(...fitnessScores);
       fitnessHistory.push(currentBestFitness);
@@ -225,8 +241,13 @@ class GeneticAlgorithmOptimizer {
         bestSolution = _.cloneDeep(population[bestIndex]);
       }
 
-      this.logger.info(`Generation ${generation + 1}/${this.generations}, Best Fitness: ${currentBestFitness.toFixed(2)}`);
-
+      // this.logger.info(`Generation ${generation + 1}/${this.generations}, Best Fitness: ${currentBestFitness.toFixed(2)}`);
+      console.log(`Generation ${generation + 1}/${this.generations}, Best Fitness: ${currentBestFitness.toFixed(2)}`);
+      // Check cancellation before creating new population
+      if (this.cancelled) {
+        console.log(`🛑 Optimization cancelled at generation ${generation + 1}`);
+        throw new Error('Optimization was cancelled');
+      }
       // Create new population
       const newPopulation = [];
 
@@ -236,6 +257,9 @@ class GeneticAlgorithmOptimizer {
 
       // Generate rest of population
       while (newPopulation.length < this.populationSize) {
+        if (this.cancelled) {
+          throw new Error('Optimization was cancelled');
+        }
         const parent1 = this.tournamentSelection(population, fitnessScores);
         const parent2 = this.tournamentSelection(population, fitnessScores);
 
@@ -255,9 +279,11 @@ class GeneticAlgorithmOptimizer {
 
       population = newPopulation.slice(0, this.populationSize);
     }
-
-    this.logger.info(`Optimization completed. Best fitness: ${bestFitness.toFixed(2)}`);
-    
+    if (this.cancelled) {
+      throw new Error('Optimization was cancelled');
+    }
+    // this.logger.info(`Optimization completed. Best fitness: ${bestFitness.toFixed(2)}`);
+    console.log(`Optimization completed. Best fitness: ${bestFitness.toFixed(2)}`);
     return {
       bestSolution,
       fitnessHistory,

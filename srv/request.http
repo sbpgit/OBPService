@@ -26,8 +26,8 @@ Content-Type: application/json
 
 {     
      "planningSystem":{}, 
-     "populationSize": 100,
-     "generations": 300,
+     "populationSize": 250,
+     "generations": 600,
      "mutationRate": 0.2,
      "crossoverRate": 0.8
 }
@@ -41,7 +41,13 @@ Content-Type: application/json
 	 
 }
 
+###
+POST http://localhost:3030/api/planning/optimize/stop
+Content-Type: application/json
 
+{
+	 "fullJobId": "ed60d55e-139c-4b13-a4a8-a8bc0c49d0f7"
+}
 ###
 GET http://localhost:3030/api/planning/download-results
 Content-Type: application/json
