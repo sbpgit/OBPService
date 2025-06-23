@@ -2,7 +2,7 @@
 const _ = require('lodash');
 const moment = require('moment');
 const path = require('path');
-const Logger = require(path.resolve(__dirname,'../utils/Logger'));
+const Logger = require(path.resolve(__dirname, '../utils/Logger'));
 
 class GeneticAlgorithmOptimizer {
   constructor(planningSystem, options = {}) {
@@ -13,6 +13,12 @@ class GeneticAlgorithmOptimizer {
     this.crossoverRate = options.crossoverRate || 0.8;
     this.tournamentSize = options.tournamentSize || 3;
     // this.logger = Logger.getInstance();
+    //New code added on 23/06/2025- Pradeep
+    this.promiseDatePreference = options.promiseDatePreference || 0.7;
+    this.timingVarianceWeeks = options.timingVarianceWeeks || 3;
+    this.unnecessaryDelayPenalty = options.unnecessaryDelayPenalty || 100;
+    this.perfectTimingBonus = options.perfectTimingBonus || 50;
+    //New code added on 23/06/2025- Pradeep
   }
   cancel() {
     this.cancelled = true;
@@ -21,18 +27,52 @@ class GeneticAlgorithmOptimizer {
   createIndividual() {
     const individual = {};
     const earliestWeek = this.system.getEarliestSchedulableWeekIndex();
-    const maxWeek = Math.min(earliestWeek + 20, this.system.weeks.length - 1);
+    //New code added on 23/06/2025- Pradeep
+    // const maxWeek = Math.min(earliestWeek + 20, this.system.weeks.length - 1);
+    // for (const orderNumber of this.system.salesOrders.keys()) {
+    //   const orderEarliestWeek = this.system.getEarliestSchedulableWeekForOrder(orderNumber);
+    //   const weekIndex = Math.floor(Math.random() * (maxWeek - orderEarliestWeek + 1)) + orderEarliestWeek;
 
+    //   individual[orderNumber] = {
+    //     weekIndex: weekIndex,
+    //     operationsAssignment: this.assignOperations(orderNumber)
+    //   };
+    // }
+    //New code added on 23/06/2025- Pradeep
     for (const orderNumber of this.system.salesOrders.keys()) {
+      const order = this.system.salesOrders.get(orderNumber);
       const orderEarliestWeek = this.system.getEarliestSchedulableWeekForOrder(orderNumber);
-      const weekIndex = Math.floor(Math.random() * (maxWeek - orderEarliestWeek + 1)) + orderEarliestWeek;
-      
+
+      // Calculate target week (promise date week)
+      const promiseDate = moment(order.orderPromiseDate);
+      const promiseWeek = `W${promiseDate.format('YYYY-WW')}`;
+      let targetWeekIndex = this.system.weeks.indexOf(promiseWeek);
+
+      if (targetWeekIndex < 0) {
+        targetWeekIndex = Math.max(orderEarliestWeek, earliestWeek + 4);
+      }
+
+      targetWeekIndex = Math.max(targetWeekIndex, orderEarliestWeek);
+      targetWeekIndex = Math.min(targetWeekIndex, this.system.weeks.length - 1);
+
+      // 70% chance to schedule near promise date, 30% random exploration
+      let weekIndex;
+      if (Math.random() < this.promiseDatePreference) {
+        const variance = Math.floor(Math.random() * (this.timingVarianceWeeks * 2 + 1)) - this.timingVarianceWeeks;
+        weekIndex = targetWeekIndex + variance;
+        weekIndex = Math.max(weekIndex, orderEarliestWeek);
+        weekIndex = Math.min(weekIndex, Math.min(targetWeekIndex + 8, this.system.weeks.length - 1));
+      } else {
+        const maxWeek = Math.min(earliestWeek + 20, this.system.weeks.length - 1);
+        weekIndex = Math.floor(Math.random() * (maxWeek - orderEarliestWeek + 1)) + orderEarliestWeek;
+      }
+
       individual[orderNumber] = {
         weekIndex: weekIndex,
         operationsAssignment: this.assignOperations(orderNumber)
       };
     }
-
+    //New code added on 23/06/2025- Pradeep
     return individual;
   }
 
@@ -50,16 +90,105 @@ class GeneticAlgorithmOptimizer {
 
     return assignment;
   }
+  //New code added on 23/06/2025- Pradeep
+  // calculateFitness(individual) {
+  //   let totalPenalty = 0.0;
+  //   const capacityUsage = {};
+  //   const earliestWeek = this.system.getEarliestSchedulableWeekIndex();
 
+  //   // Initialize capacity tracking
+  //   for (const [lineName] of this.system.lineRestrictions) {
+  //     capacityUsage[lineName] = {};
+  //   }
+
+  //   for (const [orderNumber, assignment] of Object.entries(individual)) {
+  //     const order = this.system.salesOrders.get(orderNumber);
+  //     if (!order) continue;
+
+  //     const weekIndex = assignment.weekIndex;
+
+  //     // Past scheduling penalty
+  //     if (weekIndex < earliestWeek) {
+  //       totalPenalty += 50000;
+  //       continue;
+  //     }
+
+  //     // Too early scheduling penalty
+  //     const orderEarliestWeek = this.system.getEarliestSchedulableWeekForOrder(orderNumber);
+  //     if (weekIndex < orderEarliestWeek) {
+  //       totalPenalty += 25000;
+  //       continue;
+  //     }
+
+  //     if (weekIndex >= this.system.weeks.length) {
+  //       totalPenalty += 10000;
+  //       continue;
+  //     }
+
+  //     const scheduledWeek = this.system.weeks[weekIndex];
+  //     const scheduledDate = this.weekToDate(scheduledWeek);
+  //     const promiseDate = moment(order.orderPromiseDate);
+
+  //     // Late delivery penalty
+  //     const daysDifference = scheduledDate.diff(promiseDate, 'days');
+  //     if (daysDifference > 0) {
+  //       const penaltyKey = `${order.customerPriority}_${order.productId}`;
+  //       const penaltyRule = this.system.penaltyRules.get(penaltyKey);
+  //       if (penaltyRule) {
+  //         const weeksLate = Math.max(1, Math.floor(daysDifference / 7));
+  //         totalPenalty += penaltyRule.lateDeliveryPenalty * weeksLate;
+  //       }
+  //     } else if (daysDifference >= -this.system.minEarlyDeliveryDays && daysDifference <= 0) {
+  //       // Optimal timing bonus
+  //       totalPenalty -= 5;
+  //     }
+
+  //     // Capacity constraint penalties
+  //     for (const [operationId, lineRestriction] of Object.entries(assignment.operationsAssignment)) {
+  //       if (!capacityUsage[lineRestriction]) {
+  //         capacityUsage[lineRestriction] = {};
+  //       }
+  //       if (!capacityUsage[lineRestriction][weekIndex]) {
+  //         capacityUsage[lineRestriction][weekIndex] = 0;
+  //       }
+
+  //       capacityUsage[lineRestriction][weekIndex] += order.orderQty;
+
+  //       const restriction = this.system.lineRestrictions.get(lineRestriction);
+  //       if (restriction) {
+  //         const availableCapacity = restriction.weeklyCapacity[scheduledWeek] || 0;
+  //         if (capacityUsage[lineRestriction][weekIndex] > availableCapacity) {
+  //           const excess = capacityUsage[lineRestriction][weekIndex] - availableCapacity;
+  //           totalPenalty += restriction.penaltyCost * excess;
+  //         }
+  //       }
+  //     }
+
+  //     // Component availability penalties
+  //     for (const [component, requiredQty] of Object.entries(order.components)) {
+  //       const availability = this.system.componentAvailability.get(component);
+  //       if (availability) {
+  //         const available = availability.weeklyAvailability[scheduledWeek] || 0;
+  //         if (requiredQty > available) {
+  //           totalPenalty += (requiredQty - available) * 50;
+  //         }
+  //       }
+  //     }
+  //   }
+
+  //   return Math.max(0, 100000 - totalPenalty);
+  // }
+  //New code added on 23/06/2025- Pradeep
   calculateFitness(individual) {
     let totalPenalty = 0.0;
     const capacityUsage = {};
     const earliestWeek = this.system.getEarliestSchedulableWeekIndex();
 
-    // Initialize capacity tracking
     for (const [lineName] of this.system.lineRestrictions) {
       capacityUsage[lineName] = {};
     }
+
+    const capacityAvailable = this.calculateAvailableCapacity(individual);
 
     for (const [orderNumber, assignment] of Object.entries(individual)) {
       const order = this.system.salesOrders.get(orderNumber);
@@ -67,13 +196,11 @@ class GeneticAlgorithmOptimizer {
 
       const weekIndex = assignment.weekIndex;
 
-      // Past scheduling penalty
       if (weekIndex < earliestWeek) {
         totalPenalty += 50000;
         continue;
       }
 
-      // Too early scheduling penalty
       const orderEarliestWeek = this.system.getEarliestSchedulableWeekForOrder(orderNumber);
       if (weekIndex < orderEarliestWeek) {
         totalPenalty += 25000;
@@ -88,22 +215,37 @@ class GeneticAlgorithmOptimizer {
       const scheduledWeek = this.system.weeks[weekIndex];
       const scheduledDate = this.weekToDate(scheduledWeek);
       const promiseDate = moment(order.orderPromiseDate);
-
-      // Late delivery penalty
       const daysDifference = scheduledDate.diff(promiseDate, 'days');
+      const weeksDifference = Math.floor(Math.abs(daysDifference) / 7);
+
       if (daysDifference > 0) {
+        // Late delivery penalty (exponential)
         const penaltyKey = `${order.customerPriority}_${order.productId}`;
         const penaltyRule = this.system.penaltyRules.get(penaltyKey);
         if (penaltyRule) {
-          const weeksLate = Math.max(1, Math.floor(daysDifference / 7));
-          totalPenalty += penaltyRule.lateDeliveryPenalty * weeksLate;
+          const latePenalty = penaltyRule.lateDeliveryPenalty * Math.pow(weeksDifference + 1, 1.5);
+          totalPenalty += latePenalty;
         }
-      } else if (daysDifference >= -this.system.minEarlyDeliveryDays && daysDifference <= 0) {
-        // Optimal timing bonus
-        totalPenalty -= 5;
+      } else if (daysDifference === 0) {
+        // Perfect timing bonus
+        totalPenalty -= this.perfectTimingBonus;
+      } else if (daysDifference >= -this.system.minEarlyDeliveryDays) {
+        // Early delivery within allowed window
+        totalPenalty -= Math.max(10, 30 - Math.abs(daysDifference));
+      } else {
+        // Too early
+        totalPenalty += 1000 * weeksDifference;
       }
 
-      // Capacity constraint penalties
+      // NEW: Unnecessary delay penalty
+      if (daysDifference > 7) {
+        const couldScheduleEarlier = this.canScheduleEarlier(order, weekIndex, promiseDate, capacityAvailable);
+        if (couldScheduleEarlier) {
+          totalPenalty += weeksDifference * this.unnecessaryDelayPenalty;
+        }
+      }
+
+      // Capacity and component penalties (keep existing logic)
       for (const [operationId, lineRestriction] of Object.entries(assignment.operationsAssignment)) {
         if (!capacityUsage[lineRestriction]) {
           capacityUsage[lineRestriction] = {};
@@ -111,7 +253,7 @@ class GeneticAlgorithmOptimizer {
         if (!capacityUsage[lineRestriction][weekIndex]) {
           capacityUsage[lineRestriction][weekIndex] = 0;
         }
-        
+
         capacityUsage[lineRestriction][weekIndex] += order.orderQty;
 
         const restriction = this.system.lineRestrictions.get(lineRestriction);
@@ -124,7 +266,6 @@ class GeneticAlgorithmOptimizer {
         }
       }
 
-      // Component availability penalties
       for (const [component, requiredQty] of Object.entries(order.components)) {
         const availability = this.system.componentAvailability.get(component);
         if (availability) {
@@ -138,7 +279,7 @@ class GeneticAlgorithmOptimizer {
 
     return Math.max(0, 100000 - totalPenalty);
   }
-
+  //New code added on 23/06/2025- Pradeep
   crossover(parent1, parent2) {
     const orders = Object.keys(parent1);
     const crossoverPoint = Math.floor(Math.random() * (orders.length - 1)) + 1;
@@ -204,7 +345,7 @@ class GeneticAlgorithmOptimizer {
   async optimize() {
     // this.logger.info('Starting genetic algorithm optimization...');
     console.log('Starting genetic algorithm optimization...');
-    
+
     // Initialize population
     let population = [];
     for (let i = 0; i < this.populationSize; i++) {
@@ -220,17 +361,18 @@ class GeneticAlgorithmOptimizer {
 
     for (let generation = 0; generation < this.generations; generation++) {
       await new Promise(resolve => setImmediate(resolve));
-      if (this.cancelled){
+      if (this.cancelled) {
         console.log(`🛑 Optimization cancelled at generation ${generation + 1}`);
         throw new Error('Optimization was cancelled');
-        };
+      };
       // Calculate fitness for all individuals
       const fitnessScores = population.map(individual => {
         if (this.cancelled) {
           throw new Error('Optimization was cancelled');
         }
-        return this.calculateFitness(individual)});
-      
+        return this.calculateFitness(individual)
+      });
+
       const currentBestFitness = Math.max(...fitnessScores);
       fitnessHistory.push(currentBestFitness);
 
@@ -289,6 +431,89 @@ class GeneticAlgorithmOptimizer {
       fitnessHistory,
       finalFitness: bestFitness
     };
+  }
+  //New code added on 23/06/2025- Pradeep
+  canScheduleEarlier(order, currentWeekIndex, promiseDate, capacityAvailable) {
+    const promiseWeek = `W${promiseDate.format('YYYY-WW')}`;
+    const promiseWeekIndex = this.system.weeks.indexOf(promiseWeek);
+    const earliestAllowedWeek = this.system.getEarliestSchedulableWeekForOrder(order.orderNumber);
+
+    const targetWeekIndex = Math.max(promiseWeekIndex, earliestAllowedWeek);
+
+    if (targetWeekIndex >= currentWeekIndex) {
+      return false;
+    }
+
+    for (let weekIdx = targetWeekIndex; weekIdx < currentWeekIndex; weekIdx++) {
+      const week = this.system.weeks[weekIdx];
+      let canFitInWeek = true;
+
+      for (const operationId of order.operations) {
+        const operation = this.system.operations.get(operationId);
+        if (operation) {
+          const primaryLine = operation.primaryLineRestriction;
+          const restriction = this.system.lineRestrictions.get(primaryLine);
+
+          if (restriction) {
+            const availableCapacity = restriction.weeklyCapacity[week] || 0;
+            const currentUsage = capacityAvailable[primaryLine] && capacityAvailable[primaryLine][weekIdx] || 0;
+
+            if (currentUsage + order.orderQty > availableCapacity) {
+              let canUseAlternate = false;
+              for (const alternateLine of operation.alternateLineRestrictions) {
+                const altRestriction = this.system.lineRestrictions.get(alternateLine);
+                if (altRestriction) {
+                  const altCapacity = altRestriction.weeklyCapacity[week] || 0;
+                  const altUsage = capacityAvailable[alternateLine] && capacityAvailable[alternateLine][weekIdx] || 0;
+                  if (altUsage + order.orderQty <= altCapacity) {
+                    canUseAlternate = true;
+                    break;
+                  }
+                }
+              }
+              if (!canUseAlternate) {
+                canFitInWeek = false;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      if (canFitInWeek) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  calculateAvailableCapacity(individual) {
+    const capacityUsage = {};
+
+    for (const [lineName] of this.system.lineRestrictions) {
+      capacityUsage[lineName] = {};
+    }
+
+    for (const [orderNumber, assignment] of Object.entries(individual)) {
+      const order = this.system.salesOrders.get(orderNumber);
+      if (!order) continue;
+
+      const weekIndex = assignment.weekIndex;
+      if (weekIndex < 0 || weekIndex >= this.system.weeks.length) continue;
+
+      for (const [operationId, lineRestriction] of Object.entries(assignment.operationsAssignment)) {
+        if (!capacityUsage[lineRestriction]) {
+          capacityUsage[lineRestriction] = {};
+        }
+        if (!capacityUsage[lineRestriction][weekIndex]) {
+          capacityUsage[lineRestriction][weekIndex] = 0;
+        }
+        capacityUsage[lineRestriction][weekIndex] += order.orderQty;
+      }
+    }
+
+    return capacityUsage;
   }
 }
 

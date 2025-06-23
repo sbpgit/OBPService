@@ -214,17 +214,23 @@ router.post('/optimize', async (req, res) => {
   console.timeEnd('📥 Request Processing');
   console.time('🏗️ JSON to Planning System');
   let planningSystem = (planningSystemJSON && Object.keys(planningSystemJSON).length > 0)
-        ? router.createPlanningSystemFromJSON(planningSystemJSON)
-        : new OrderPlanningSystem(planningStartDate, minEarlyDeliveryDays);
-        console.timeEnd('🏗️ JSON to Planning System');
-        console.time('📊 Load Sample Data');
-      if (!planningSystemJSON) planningSystem.loadSampleData();
-      console.timeEnd('📊 Load Sample Data');
-      console.timeEnd('🔧 Planning System Init');
-  
+    ? router.createPlanningSystemFromJSON(planningSystemJSON)
+    : new OrderPlanningSystem(planningStartDate, minEarlyDeliveryDays);
+  console.timeEnd('🏗️ JSON to Planning System');
+  console.time('📊 Load Sample Data');
+  if (!planningSystemJSON) planningSystem.loadSampleData();
+  console.timeEnd('📊 Load Sample Data');
+  console.timeEnd('🔧 Planning System Init');
+
   console.time('🧠 Optimizer Init');
   const optimizer = new GeneticAlgorithmOptimizer(planningSystem, {
-    populationSize, generations, mutationRate, crossoverRate
+    populationSize, generations, mutationRate, crossoverRate,
+    //New code added on 23/06/2025- Pradeep
+    promiseDatePreference: req.body.promiseDatePreference || 0.7,
+    timingVarianceWeeks: req.body.timingVarianceWeeks || 3,
+    unnecessaryDelayPenalty: req.body.unnecessaryDelayPenalty || 100,
+    perfectTimingBonus: req.body.perfectTimingBonus || 50
+    //New code added on 23/06/2025- Pradeep
   });
   console.timeEnd('🧠 Optimizer Init');
   console.time('📦 Job Creation');
@@ -234,52 +240,57 @@ router.post('/optimize', async (req, res) => {
   res.json({ success: true, jobId });
   res.end();
   console.timeEnd('📤 Sending Response');
-  console.timeEnd('💡 Total Handler Time'); 
-  
+  console.timeEnd('💡 Total Handler Time');
+
   // ✅ Fire-and-forget background execution
   setImmediate(() => {
-  (async () => {
-    try {
-      console.time('🧵 Background Optimization');
-      const optimizationResult = await optimizer.optimize();
-      const analyzer = new ResultsAnalyzer(planningSystem);
-      const analysisResults = analyzer.analyzeSolution(optimizationResult.bestSolution);
-      const comparisonReport = analyzer.generateComparisonReport(analysisResults);
+    (async () => {
+      try {
+        console.time('🧵 Background Optimization');
+        const optimizationResult = await optimizer.optimize();
+        const analyzer = new ResultsAnalyzer(planningSystem);
+        const analysisResults = analyzer.analyzeSolution(optimizationResult.bestSolution);
+        const comparisonReport = analyzer.generateComparisonReport(analysisResults);
+        //New code added on 23/06/2025- Pradeep
+        const timingMetrics = router.calculateTimingMetrics(analysisResults);
+        //New code added on 23/06/2025- Pradeep
+        const excelHandler = new ExcelHandler();
+        const publicDir = path.join(__dirname, '..', 'public');
+        const resultsFilePath = path.join(publicDir, 'optimization_results.xlsx');
 
-      const excelHandler = new ExcelHandler();
-      const publicDir = path.join(__dirname, '..', 'public');
-      const resultsFilePath = path.join(publicDir, 'optimization_results.xlsx');
+        await excelHandler.createResultsFile(
+          analysisResults,
+          optimizationResult.bestSolution,
+          optimizationResult.fitnessHistory,
+          resultsFilePath
+        );
 
-      await excelHandler.createResultsFile(
-        analysisResults,
-        optimizationResult.bestSolution,
-        optimizationResult.fitnessHistory,
-        resultsFilePath
-      );
-
-      JobManager.setCompleted(jobId, {
-        summary: comparisonReport.summary,
-        performanceMetrics: comparisonReport.performanceMetrics,
-        priorityBreakdown: comparisonReport.priorityBreakdown,
-        capacityUtilization: comparisonReport.capacityUtilization,
-        finalFitness: optimizationResult.finalFitness,
-        generations: optimizationResult.fitnessHistory.length,
-        downloadUrl: '/static/optimization_results.xlsx'
-      });
-    } catch (err) {
-      if (err.message.includes('cancelled')) {
-        console.log('🛑 Optimization was cancelled');
-        JobManager.setError(jobId, 'Optimization was cancelled by user');
-      } else {
-        console.error('❌ Optimization failed:', err);
-        JobManager.setError(jobId, err.message);
+        JobManager.setCompleted(jobId, {
+          summary: comparisonReport.summary,
+          performanceMetrics: comparisonReport.performanceMetrics,
+          priorityBreakdown: comparisonReport.priorityBreakdown,
+          capacityUtilization: comparisonReport.capacityUtilization,
+          //New code added on 23/06/2025- Pradeep
+          timingMetrics: timingMetrics,
+          //New code added on 23/06/2025- Pradeep
+          finalFitness: optimizationResult.finalFitness,
+          generations: optimizationResult.fitnessHistory.length,
+          downloadUrl: '/static/optimization_results.xlsx'
+        });
+      } catch (err) {
+        if (err.message.includes('cancelled')) {
+          console.log('🛑 Optimization was cancelled');
+          JobManager.setError(jobId, 'Optimization was cancelled by user');
+        } else {
+          console.error('❌ Optimization failed:', err);
+          JobManager.setError(jobId, err.message);
+        }
+        // JobManager.setError(jobId, err.message);
       }
-      // JobManager.setError(jobId, err.message);
-    }
-    console.timeEnd('🧵 Background Optimization');
-    
-  })(); // ⬅️ Do NOT `await` this!
-});
+      console.timeEnd('🧵 Background Optimization');
+
+    })(); // ⬅️ Do NOT `await` this!
+  });
 
 });
 
@@ -301,7 +312,7 @@ router.get('/optimize/status/:jobId', (req, res) => {
 router.post('/optimize/stop', (req, res) => {
 
   const { fullJobId } = req.body;
-  console.log("JobId :",fullJobId);
+  console.log("JobId :", fullJobId);
   const job = JobManager.getJob(fullJobId);
   // console.log(job);
   if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
@@ -477,5 +488,36 @@ router.get('/download-results', (req, res) => {
     }
   });
 });
+//New code changes 23/06/2025-Pradeep
+router.calculateTimingMetrics = function (analysisResults) {
+  const validOrders = analysisResults.orderResults.filter(order => !order.isInvalid && typeof order.delayDays === 'number');
 
+  if (validOrders.length === 0) {
+    return {
+      averageDeviation: 0,
+      averageAbsoluteDeviation: 0,
+      ordersWithinOneWeek: 0,
+      ordersWithinTwoWeeks: 0,
+      unnecessaryDelays: 0,
+      perfectTiming: 0,
+      percentageWithinOneWeek: "0%",
+      percentageWithinTwoWeeks: "0%"
+    };
+  }
+
+  const delays = validOrders.map(order => order.delayDays);
+  const absoluteDelays = delays.map(delay => Math.abs(delay));
+
+  return {
+    averageDeviation: (delays.reduce((sum, delay) => sum + delay, 0) / validOrders.length).toFixed(1),
+    averageAbsoluteDeviation: (absoluteDelays.reduce((sum, delay) => sum + delay, 0) / validOrders.length).toFixed(1),
+    ordersWithinOneWeek: validOrders.filter(order => Math.abs(order.delayDays) <= 7).length,
+    ordersWithinTwoWeeks: validOrders.filter(order => Math.abs(order.delayDays) <= 14).length,
+    unnecessaryDelays: validOrders.filter(order => order.delayDays > 7).length,
+    perfectTiming: validOrders.filter(order => order.delayDays === 0).length,
+    percentageWithinOneWeek: (validOrders.filter(order => Math.abs(order.delayDays) <= 7).length / validOrders.length * 100).toFixed(1) + "%",
+    percentageWithinTwoWeeks: (validOrders.filter(order => Math.abs(order.delayDays) <= 14).length / validOrders.length * 100).toFixed(1) + "%"
+  };
+};
+//New code changes 23/06/2025-Pradeep
 module.exports = router;
