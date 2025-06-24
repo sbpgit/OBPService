@@ -24,22 +24,103 @@ class GeneticAlgorithmOptimizer {
     this.cancelled = true;
     console.log("Job Cancellation called");
   }
+  //Commented code on 24/06/2025 based on version 3 sent by Ashok
+  // createIndividual() {
+  //   const individual = {};
+  //   const earliestWeek = this.system.getEarliestSchedulableWeekIndex();
+  //   //New code added on 23/06/2025- Pradeep
+  //   // const maxWeek = Math.min(earliestWeek + 20, this.system.weeks.length - 1);
+  //   // for (const orderNumber of this.system.salesOrders.keys()) {
+  //   //   const orderEarliestWeek = this.system.getEarliestSchedulableWeekForOrder(orderNumber);
+  //   //   const weekIndex = Math.floor(Math.random() * (maxWeek - orderEarliestWeek + 1)) + orderEarliestWeek;
+
+  //   //   individual[orderNumber] = {
+  //   //     weekIndex: weekIndex,
+  //   //     operationsAssignment: this.assignOperations(orderNumber)
+  //   //   };
+  //   // }
+  //   //New code added on 23/06/2025- Pradeep
+  //   for (const orderNumber of this.system.salesOrders.keys()) {
+  //     const order = this.system.salesOrders.get(orderNumber);
+  //     const orderEarliestWeek = this.system.getEarliestSchedulableWeekForOrder(orderNumber);
+
+  //     // Calculate target week (promise date week)
+  //     const promiseDate = moment(order.orderPromiseDate);
+  //     const promiseWeek = `W${promiseDate.format('YYYY-WW')}`;
+  //     let targetWeekIndex = this.system.weeks.indexOf(promiseWeek);
+
+  //     if (targetWeekIndex < 0) {
+  //       targetWeekIndex = Math.max(orderEarliestWeek, earliestWeek + 4);
+  //     }
+
+  //     targetWeekIndex = Math.max(targetWeekIndex, orderEarliestWeek);
+  //     targetWeekIndex = Math.min(targetWeekIndex, this.system.weeks.length - 1);
+
+  //     // 70% chance to schedule near promise date, 30% random exploration
+  //     let weekIndex;
+  //     // if (Math.random() < this.promiseDatePreference) {
+  //     //   const variance = Math.floor(Math.random() * (this.timingVarianceWeeks * 2 + 1)) - this.timingVarianceWeeks;
+  //     //   weekIndex = targetWeekIndex + variance;
+  //     //   weekIndex = Math.max(weekIndex, orderEarliestWeek);
+  //     //   weekIndex = Math.min(weekIndex, Math.min(targetWeekIndex + 8, this.system.weeks.length - 1));
+  //     // } 
+  //     //New Code added 23/06/2025-Pradeep
+  //     if (Math.random() < this.promiseDatePreference) {
+  //       const priorityCriteria = this.system.getPriorityDeliveryCriteria(order.customerPriority);
+
+  //       // Adjust variance based on priority
+  //       let maxVarianceWeeks = this.timingVarianceWeeks;
+  //       if (priorityCriteria.maxDelayDays === 0) {
+  //         // Critical/High priority: prefer early or exact timing
+  //         maxVarianceWeeks = Math.min(2, this.timingVarianceWeeks);
+  //         const variance = Math.floor(Math.random() * (maxVarianceWeeks + 1)) - maxVarianceWeeks; // -2 to 0
+  //         weekIndex = targetWeekIndex + variance;
+  //       } else {
+  //         // Medium/Low priority: allow some positive variance based on max delay
+  //         const maxDelayWeeks = Math.ceil(priorityCriteria.maxDelayDays / 7);
+  //         const variance = Math.floor(Math.random() * (maxVarianceWeeks + maxDelayWeeks + 1)) - maxVarianceWeeks; // -3 to +2
+  //         weekIndex = targetWeekIndex + variance;
+  //       }
+
+  //       weekIndex = Math.max(weekIndex, orderEarliestWeek);
+  //       weekIndex = Math.min(weekIndex, Math.min(targetWeekIndex + Math.ceil(priorityCriteria.maxDelayDays / 7) + 2, this.system.weeks.length - 1));
+  //     }      
+  //     else {
+  //       const maxWeek = Math.min(earliestWeek + 20, this.system.weeks.length - 1);
+  //       weekIndex = Math.floor(Math.random() * (maxWeek - orderEarliestWeek + 1)) + orderEarliestWeek;
+  //     }
+
+  //     individual[orderNumber] = {
+  //       weekIndex: weekIndex,
+  //       operationsAssignment: this.assignOperations(orderNumber)
+  //     };
+  //   }
+  //   //New code added on 23/06/2025- Pradeep
+  //   return individual;
+  // }
+
+  //New createIndividual function based on version3 sent by Ashok
   createIndividual() {
     const individual = {};
-    const earliestWeek = this.system.getEarliestSchedulableWeekIndex();
-    //New code added on 23/06/2025- Pradeep
-    // const maxWeek = Math.min(earliestWeek + 20, this.system.weeks.length - 1);
-    // for (const orderNumber of this.system.salesOrders.keys()) {
-    //   const orderEarliestWeek = this.system.getEarliestSchedulableWeekForOrder(orderNumber);
-    //   const weekIndex = Math.floor(Math.random() * (maxWeek - orderEarliestWeek + 1)) + orderEarliestWeek;
+    const capacityTracker = this.initializeCapacityTracker();
 
-    //   individual[orderNumber] = {
-    //     weekIndex: weekIndex,
-    //     operationsAssignment: this.assignOperations(orderNumber)
-    //   };
-    // }
-    //New code added on 23/06/2025- Pradeep
-    for (const orderNumber of this.system.salesOrders.keys()) {
+    // Sort orders by priority and promise date for better initial allocation
+    const orderNumbers = Array.from(this.system.salesOrders.keys());
+    const sortedOrders = orderNumbers.sort((a, b) => {
+      const orderA = this.system.salesOrders.get(a);
+      const orderB = this.system.salesOrders.get(b);
+
+      // Priority order: Critical, High, Medium, Low
+      const priorityOrder = { 'Critical': 0, 'High': 1, 'Medium': 2, 'Low': 3 };
+      const priorityDiff = (priorityOrder[orderA.customerPriority] || 4) - (priorityOrder[orderB.customerPriority] || 4);
+
+      if (priorityDiff !== 0) return priorityDiff;
+
+      // Then by promise date
+      return moment(orderA.orderPromiseDate).diff(moment(orderB.orderPromiseDate));
+    });
+
+    for (const orderNumber of sortedOrders) {
       const order = this.system.salesOrders.get(orderNumber);
       const orderEarliestWeek = this.system.getEarliestSchedulableWeekForOrder(orderNumber);
 
@@ -49,33 +130,33 @@ class GeneticAlgorithmOptimizer {
       let targetWeekIndex = this.system.weeks.indexOf(promiseWeek);
 
       if (targetWeekIndex < 0) {
-        targetWeekIndex = Math.max(orderEarliestWeek, earliestWeek + 4);
+        targetWeekIndex = Math.max(orderEarliestWeek, this.system.getEarliestSchedulableWeekIndex() + 2);
       }
 
       targetWeekIndex = Math.max(targetWeekIndex, orderEarliestWeek);
-      targetWeekIndex = Math.min(targetWeekIndex, this.system.weeks.length - 1);
 
-      // 70% chance to schedule near promise date, 30% random exploration
-      let weekIndex;
-      if (Math.random() < this.promiseDatePreference) {
-        const variance = Math.floor(Math.random() * (this.timingVarianceWeeks * 2 + 1)) - this.timingVarianceWeeks;
-        weekIndex = targetWeekIndex + variance;
-        weekIndex = Math.max(weekIndex, orderEarliestWeek);
-        weekIndex = Math.min(weekIndex, Math.min(targetWeekIndex + 8, this.system.weeks.length - 1));
+      // Find the best week with available capacity
+      const bestWeek = this.findBestAvailableWeek(order, targetWeekIndex, capacityTracker);
+
+      if (bestWeek.weekIndex >= 0) {
+        individual[orderNumber] = {
+          weekIndex: bestWeek.weekIndex,
+          operationsAssignment: bestWeek.operationsAssignment
+        };
+
+        // Update capacity tracker
+        this.updateCapacityTracker(capacityTracker, order, bestWeek.weekIndex, bestWeek.operationsAssignment);
       } else {
-        const maxWeek = Math.min(earliestWeek + 20, this.system.weeks.length - 1);
-        weekIndex = Math.floor(Math.random() * (maxWeek - orderEarliestWeek + 1)) + orderEarliestWeek;
+        // Fallback: assign to earliest possible week (will be penalized in fitness)
+        individual[orderNumber] = {
+          weekIndex: targetWeekIndex,
+          operationsAssignment: this.assignOperations(orderNumber)
+        };
       }
-
-      individual[orderNumber] = {
-        weekIndex: weekIndex,
-        operationsAssignment: this.assignOperations(orderNumber)
-      };
     }
-    //New code added on 23/06/2025- Pradeep
+
     return individual;
   }
-
   assignOperations(orderNumber) {
     const order = this.system.salesOrders.get(orderNumber);
     const assignment = {};
@@ -188,7 +269,10 @@ class GeneticAlgorithmOptimizer {
       capacityUsage[lineName] = {};
     }
 
-    const capacityAvailable = this.calculateAvailableCapacity(individual);
+    // NEW: Track severe capacity violations -added on 24/06/2025 Version 3
+    let severeCapacityViolations = 0;
+    let totalCapacityViolations = 0;
+    // const capacityAvailable = this.calculateAvailableCapacity(individual);
 
     for (const [orderNumber, assignment] of Object.entries(individual)) {
       const order = this.system.salesOrders.get(orderNumber);
@@ -218,15 +302,37 @@ class GeneticAlgorithmOptimizer {
       const daysDifference = scheduledDate.diff(promiseDate, 'days');
       const weeksDifference = Math.floor(Math.abs(daysDifference) / 7);
 
+      // if (daysDifference > 0) {
+      //   // Late delivery penalty (exponential)
+      //   const penaltyKey = `${order.customerPriority}_${order.productId}`;
+      //   const penaltyRule = this.system.penaltyRules.get(penaltyKey);
+      //   if (penaltyRule) {
+      //     const latePenalty = penaltyRule.lateDeliveryPenalty * Math.pow(weeksDifference + 1, 1.5);
+      //     totalPenalty += latePenalty;
+      //   }
+      // } 
+      //New code added 23/06/2025- Pradeep
       if (daysDifference > 0) {
-        // Late delivery penalty (exponential)
+        // Priority-based delay checking
+        const priorityCriteria = this.system.getPriorityDeliveryCriteria(order.customerPriority);
+        const isDelayAcceptable = daysDifference <= priorityCriteria.maxDelayDays;
+
+        if (!isDelayAcceptable) {
+          // Unacceptable delay for this priority level
+          const excessDelayDays = daysDifference - priorityCriteria.maxDelayDays;
+          const priorityViolationPenalty = excessDelayDays * 200 * priorityCriteria.penaltyMultiplier;
+          totalPenalty += priorityViolationPenalty;
+        }
+
+        // Standard late delivery penalty
         const penaltyKey = `${order.customerPriority}_${order.productId}`;
         const penaltyRule = this.system.penaltyRules.get(penaltyKey);
         if (penaltyRule) {
-          const latePenalty = penaltyRule.lateDeliveryPenalty * Math.pow(weeksDifference + 1, 1.5);
+          const latePenalty = penaltyRule.lateDeliveryPenalty * Math.pow(weeksDifference + 1, 1.5) * priorityCriteria.penaltyMultiplier;
           totalPenalty += latePenalty;
         }
-      } else if (daysDifference === 0) {
+      }
+      else if (daysDifference === 0) {
         // Perfect timing bonus
         totalPenalty -= this.perfectTimingBonus;
       } else if (daysDifference >= -this.system.minEarlyDeliveryDays) {
@@ -238,12 +344,12 @@ class GeneticAlgorithmOptimizer {
       }
 
       // NEW: Unnecessary delay penalty
-      if (daysDifference > 7) {
-        const couldScheduleEarlier = this.canScheduleEarlier(order, weekIndex, promiseDate, capacityAvailable);
-        if (couldScheduleEarlier) {
-          totalPenalty += weeksDifference * this.unnecessaryDelayPenalty;
-        }
-      }
+      // if (daysDifference > 7) {
+      //   const couldScheduleEarlier = this.canScheduleEarlier(order, weekIndex, promiseDate, capacityAvailable);
+      //   if (couldScheduleEarlier) {
+      //     totalPenalty += weeksDifference * this.unnecessaryDelayPenalty;
+      //   }
+      // }
 
       // Capacity and component penalties (keep existing logic)
       for (const [operationId, lineRestriction] of Object.entries(assignment.operationsAssignment)) {
@@ -261,11 +367,20 @@ class GeneticAlgorithmOptimizer {
           const availableCapacity = restriction.weeklyCapacity[scheduledWeek] || 0;
           if (capacityUsage[lineRestriction][weekIndex] > availableCapacity) {
             const excess = capacityUsage[lineRestriction][weekIndex] - availableCapacity;
-            totalPenalty += restriction.penaltyCost * excess;
+           // Exponential penalty for capacity violations
+          const capacityPenalty = restriction.penaltyCost * Math.pow(excess, 1.5);
+          totalPenalty += capacityPenalty;
+          
+          totalCapacityViolations += excess;
+          
+          // Track severe violations (exceeding capacity by 100%+)
+          if (excess >= availableCapacity) {
+            severeCapacityViolations++;
+            totalPenalty += 5000; // Additional severe penalty
           }
         }
       }
-
+    }
       for (const [component, requiredQty] of Object.entries(order.components)) {
         const availability = this.system.componentAvailability.get(component);
         if (availability) {
@@ -276,6 +391,15 @@ class GeneticAlgorithmOptimizer {
         }
       }
     }
+
+    // NEW: Additional penalty for poor capacity utilization patterns
+  if (severeCapacityViolations > 0) {
+    totalPenalty += severeCapacityViolations * 2000;
+  }
+  
+  if (totalCapacityViolations > 10) {
+    totalPenalty += totalCapacityViolations * 100;
+  }
 
     return Math.max(0, 100000 - totalPenalty);
   }
@@ -300,19 +424,104 @@ class GeneticAlgorithmOptimizer {
 
     return [child1, child2];
   }
+  //Commenting code based on version 3 sent by Ashok and replacing with new mutate function - 24/06/2025
+  // mutate(individual) {
+  //   const earliestWeek = this.system.getEarliestSchedulableWeekIndex();
+  //   const maxWeek = Math.min(earliestWeek + 20, this.system.weeks.length - 1);
 
+  //   for (const orderNumber of Object.keys(individual)) {
+  //     if (Math.random() < this.mutationRate) {
+  //       const orderEarliestWeek = this.system.getEarliestSchedulableWeekForOrder(orderNumber);
+  //       individual[orderNumber].weekIndex = Math.floor(Math.random() * (maxWeek - orderEarliestWeek + 1)) + orderEarliestWeek;
+  //     }
+
+  //     if (Math.random() < this.mutationRate) {
+  //       individual[orderNumber].operationsAssignment = this.assignOperations(orderNumber);
+  //     }
+  //   }
+  // }
   mutate(individual) {
     const earliestWeek = this.system.getEarliestSchedulableWeekIndex();
-    const maxWeek = Math.min(earliestWeek + 20, this.system.weeks.length - 1);
+    const capacityTracker = this.calculateCurrentCapacityUsage(individual);
 
     for (const orderNumber of Object.keys(individual)) {
       if (Math.random() < this.mutationRate) {
+        const order = this.system.salesOrders.get(orderNumber);
         const orderEarliestWeek = this.system.getEarliestSchedulableWeekForOrder(orderNumber);
-        individual[orderNumber].weekIndex = Math.floor(Math.random() * (maxWeek - orderEarliestWeek + 1)) + orderEarliestWeek;
+        const currentAssignment = individual[orderNumber];
+
+        // Remove current assignment from capacity tracker
+        this.removeFromCapacityTracker(capacityTracker, order, currentAssignment.weekIndex, currentAssignment.operationsAssignment);
+
+        // Calculate target week for intelligent mutation
+        const promiseDate = moment(order.orderPromiseDate);
+        const promiseWeek = `W${promiseDate.format('YYYY-WW')}`;
+        let targetWeekIndex = this.system.weeks.indexOf(promiseWeek);
+
+        if (targetWeekIndex < 0) {
+          targetWeekIndex = Math.max(orderEarliestWeek, earliestWeek + 2);
+        }
+
+        targetWeekIndex = Math.max(targetWeekIndex, orderEarliestWeek);
+
+        // 70% chance for intelligent mutation (capacity-aware), 30% random
+        if (Math.random() < 0.7) {
+          // Try to find better week with available capacity
+          const betterWeek = this.findBestAvailableWeek(order, targetWeekIndex, capacityTracker);
+
+          if (betterWeek.weekIndex >= 0) {
+            individual[orderNumber] = {
+              weekIndex: betterWeek.weekIndex,
+              operationsAssignment: betterWeek.operationsAssignment
+            };
+
+            // Update capacity tracker with new assignment
+            this.updateCapacityTracker(capacityTracker, order, betterWeek.weekIndex, betterWeek.operationsAssignment);
+          } else {
+            // Fallback to current assignment
+            individual[orderNumber] = currentAssignment;
+            this.updateCapacityTracker(capacityTracker, order, currentAssignment.weekIndex, currentAssignment.operationsAssignment);
+          }
+        } else {
+          // Random mutation - but still check capacity
+          const maxWeek = Math.min(earliestWeek + 20, this.system.weeks.length - 1);
+          let attempts = 0;
+          let newWeekIndex;
+          let newAssignment;
+
+          do {
+            newWeekIndex = Math.floor(Math.random() * (maxWeek - orderEarliestWeek + 1)) + orderEarliestWeek;
+            newAssignment = this.findCapacityForWeek(order, newWeekIndex, capacityTracker);
+            attempts++;
+          } while (!newAssignment && attempts < 10);
+
+          if (newAssignment) {
+            individual[orderNumber] = {
+              weekIndex: newWeekIndex,
+              operationsAssignment: newAssignment
+            };
+            this.updateCapacityTracker(capacityTracker, order, newWeekIndex, newAssignment);
+          } else {
+            // Keep current assignment if no capacity found
+            individual[orderNumber] = currentAssignment;
+            this.updateCapacityTracker(capacityTracker, order, currentAssignment.weekIndex, currentAssignment.operationsAssignment);
+          }
+        }
       }
 
-      if (Math.random() < this.mutationRate) {
-        individual[orderNumber].operationsAssignment = this.assignOperations(orderNumber);
+      // Mutate operation assignments with capacity awareness
+      if (Math.random() < this.mutationRate * 0.5) {
+        const order = this.system.salesOrders.get(orderNumber);
+        const weekIndex = individual[orderNumber].weekIndex;
+        const newAssignment = this.findCapacityForWeek(order, weekIndex, capacityTracker);
+
+        if (newAssignment) {
+          // Remove old assignment
+          this.removeFromCapacityTracker(capacityTracker, order, weekIndex, individual[orderNumber].operationsAssignment);
+          // Add new assignment
+          individual[orderNumber].operationsAssignment = newAssignment;
+          this.updateCapacityTracker(capacityTracker, order, weekIndex, newAssignment);
+        }
       }
     }
   }
@@ -514,6 +723,124 @@ class GeneticAlgorithmOptimizer {
     }
 
     return capacityUsage;
+  }
+
+  //New functions added based on version 3 code sent by ashok- 24/06/2025
+  initializeCapacityTracker() {
+    const tracker = {};
+    for (const [lineName, restriction] of this.system.lineRestrictions) {
+      tracker[lineName] = {};
+      for (let weekIndex = 0; weekIndex < this.system.weeks.length; weekIndex++) {
+        const week = this.system.weeks[weekIndex];
+        tracker[lineName][weekIndex] = restriction.weeklyCapacity[week] || 0;
+      }
+    }
+    return tracker;
+  }
+
+  findBestAvailableWeek(order, targetWeekIndex, capacityTracker) {
+    const orderEarliestWeek = this.system.getEarliestSchedulableWeekForOrder(order.orderNumber);
+    const priorityCriteria = this.system.getPriorityDeliveryCriteria(order.customerPriority);
+    const maxDelayWeeks = Math.ceil(priorityCriteria.maxDelayDays / 7);
+
+    // Search range: from earliest allowed to target + max allowed delay
+    const searchStart = orderEarliestWeek;
+    const searchEnd = Math.min(
+      targetWeekIndex + maxDelayWeeks + 2,
+      this.system.weeks.length - 1
+    );
+
+    // Prefer weeks closer to target date
+    const searchOrder = [];
+
+    // Add target week first
+    if (targetWeekIndex >= searchStart && targetWeekIndex <= searchEnd) {
+      searchOrder.push(targetWeekIndex);
+    }
+
+    // Add weeks around target (±1, ±2, ±3, etc.)
+    for (let offset = 1; offset <= Math.max(targetWeekIndex - searchStart, searchEnd - targetWeekIndex); offset++) {
+      if (targetWeekIndex - offset >= searchStart) {
+        searchOrder.push(targetWeekIndex - offset);
+      }
+      if (targetWeekIndex + offset <= searchEnd) {
+        searchOrder.push(targetWeekIndex + offset);
+      }
+    }
+
+    // Try to find a week with available capacity
+    for (const weekIndex of searchOrder) {
+      const assignment = this.findCapacityForWeek(order, weekIndex, capacityTracker);
+      if (assignment) {
+        return {
+          weekIndex: weekIndex,
+          operationsAssignment: assignment
+        };
+      }
+    }
+
+    // No capacity found
+    return { weekIndex: -1, operationsAssignment: {} };
+  }
+
+  findCapacityForWeek(order, weekIndex, capacityTracker) {
+    const assignment = {};
+    let allOperationsCanFit = true;
+
+    for (const operationId of order.operations) {
+      const operation = this.system.operations.get(operationId);
+      if (!operation) continue;
+
+      const availableLines = [operation.primaryLineRestriction, ...operation.alternateLineRestrictions];
+      let lineFound = false;
+
+      // Try primary line first, then alternates
+      for (const lineName of availableLines) {
+        const availableCapacity = capacityTracker[lineName] && capacityTracker[lineName][weekIndex] || 0;
+
+        if (availableCapacity >= order.orderQty) {
+          assignment[operationId] = lineName;
+          lineFound = true;
+          break;
+        }
+      }
+
+      if (!lineFound) {
+        allOperationsCanFit = false;
+        break;
+      }
+    }
+
+    return allOperationsCanFit ? assignment : null;
+  }
+
+  updateCapacityTracker(capacityTracker, order, weekIndex, operationsAssignment) {
+    for (const [operationId, lineName] of Object.entries(operationsAssignment)) {
+      if (capacityTracker[lineName] && capacityTracker[lineName][weekIndex] !== undefined) {
+        capacityTracker[lineName][weekIndex] -= order.orderQty;
+      }
+    }
+  }
+
+  calculateCurrentCapacityUsage(individual) {
+    const capacityTracker = this.initializeCapacityTracker();
+
+    for (const [orderNumber, assignment] of Object.entries(individual)) {
+      const order = this.system.salesOrders.get(orderNumber);
+      if (order) {
+        this.removeFromCapacityTracker(capacityTracker, order, assignment.weekIndex, assignment.operationsAssignment);
+      }
+    }
+
+    return capacityTracker;
+  }
+
+  removeFromCapacityTracker(capacityTracker, order, weekIndex, operationsAssignment) {
+    for (const [operationId, lineName] of Object.entries(operationsAssignment)) {
+      if (capacityTracker[lineName] && capacityTracker[lineName][weekIndex] !== undefined) {
+        capacityTracker[lineName][weekIndex] += order.orderQty; // Add back the capacity
+      }
+    }
   }
 }
 

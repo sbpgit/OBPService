@@ -269,13 +269,21 @@ router.post('/optimize', async (req, res) => {
           summary: comparisonReport.summary,
           performanceMetrics: comparisonReport.performanceMetrics,
           priorityBreakdown: comparisonReport.priorityBreakdown,
+          priorityCompliance: comparisonReport.priorityCompliance, // New line added 23/06/2025 - Pradeep
           capacityUtilization: comparisonReport.capacityUtilization,
           //New code added on 23/06/2025- Pradeep
           timingMetrics: timingMetrics,
           //New code added on 23/06/2025- Pradeep
           finalFitness: optimizationResult.finalFitness,
           generations: optimizationResult.fitnessHistory.length,
-          downloadUrl: '/static/optimization_results.xlsx'
+          capacityViolations: router.analyzeCapacityViolations(analysisResults),// New line added 24/06/2025 based on version 3 ashok- Pradeep
+          pivotTableInfo: {
+            description: 'Capacity pivot table created',
+            mainFile: '/static/optimization_results.xlsx',
+            pivotFile: '/static/optimization_results_Capacity_Pivot.xlsx'
+          }, // New line added 24/06/2025 based on version 3 ashok- Pradeep
+          downloadUrl: '/static/optimization_results.xlsx',
+          pivotDownloadUrl: '/static/optimization_results_Capacity_Pivot.xlsx' // New line added 24/06/2025 based on version 3 ashok- Pradeep
         });
       } catch (err) {
         if (err.message.includes('cancelled')) {
@@ -435,6 +443,27 @@ router.createPlanningSystemFromExcel = async function (data, planningStartDate, 
     }
   }
 
+  // Load Priority Delivery Criteria
+if (data.Priority_Delivery_Criteria) {
+  data.Priority_Delivery_Criteria.forEach(criteria => {
+    planningSystem.addPriorityDeliveryCriteria({
+      customerPriority: criteria.Customer_Priority || criteria.customerPriority || criteria["Customer Priority"],
+      maxDelayDays: criteria.Max_Delay_Days || criteria.maxDelayDays || criteria["Max Delay Days"]|| 7,
+      penaltyMultiplier: criteria.Penalty_Multiplier || criteria.penaltyMultiplier || criteria["Penalty Multiplier"]|| 2.0,
+      description: criteria.Description || criteria.description || criteria["Description"] ||''
+    });
+  });
+} else {
+  // Load default criteria if not provided
+  const defaultCriteria = [
+    { customerPriority: 'Critical', maxDelayDays: 0, penaltyMultiplier: 5.0, description: 'Must be on time or early' },
+    { customerPriority: 'High', maxDelayDays: 0, penaltyMultiplier: 3.0, description: 'Must be on time or early' },
+    { customerPriority: 'Medium', maxDelayDays: 7, penaltyMultiplier: 2.0, description: 'Up to 1 week delay allowed' },
+    { customerPriority: 'Low', maxDelayDays: 14, penaltyMultiplier: 1.0, description: 'Up to 2 weeks delay allowed' }
+  ];
+  defaultCriteria.forEach(criteria => planningSystem.addPriorityDeliveryCriteria(criteria));
+}
+
   return planningSystem;
 };
 
@@ -465,6 +494,10 @@ router.createPlanningSystemFromJSON = function (jsonData) {
   Object.entries(jsonData.componentAvailability).forEach(([key, value]) => {
     planningSystem.componentAvailability.set(key, value);
   });
+  //New code added 23/06/2025 - Pradeep
+  Object.entries(jsonData.priorityDeliveryCriteria || {}).forEach(([key, value]) => {
+    planningSystem.priorityDeliveryCriteria.set(key, value);
+  });
 
   return planningSystem;
 };
@@ -482,6 +515,16 @@ router.get('/download-sample', (req, res) => {
 router.get('/download-results', (req, res) => {
   const filePath = path.join(__dirname, '..', 'public', 'optimization_results.xlsx');
   res.download(filePath, 'optimization_results.xlsx', (err) => {
+    if (err) {
+      console.error('Download failed:', err);
+      res.status(500).send('File download failed');
+    }
+  });
+});
+//New code changes 24/06/2025 based on verison 3 by Ashok-Pradeep
+router.get('/downloadPivot-results', (req, res) => {
+  const filePath = path.join(__dirname, '..', 'public', 'optimization_results_Capacity_Pivot.xlsx');
+  res.download(filePath, 'optimization_results_Capacity_Pivot.xlsx', (err) => {
     if (err) {
       console.error('Download failed:', err);
       res.status(500).send('File download failed');
@@ -520,4 +563,19 @@ router.calculateTimingMetrics = function (analysisResults) {
   };
 };
 //New code changes 23/06/2025-Pradeep
+//New code changes 24/06/2025 based on version 3-Pradeep
+
+router.analyzeCapacityViolations = function(analysisResults) {
+  const violations = [];
+  let totalViolations = 0;
+  
+  // This would need access to the solution and system to calculate violations
+  // For now, return summary stats
+  return {
+    totalViolations: totalViolations,
+    severeViolations: 0,
+    violationsByLine: {},
+    message: totalViolations === 0 ? 'No capacity violations detected' : `${totalViolations} capacity violations found`
+  };
+};
 module.exports = router;

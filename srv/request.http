@@ -29,7 +29,11 @@ Content-Type: application/json
      "populationSize": 250,
      "generations": 600,
      "mutationRate": 0.2,
-     "crossoverRate": 0.8
+     "crossoverRate": 0.8,
+     "promiseDatePreference":0.7,
+     "timingVarianceWeeks":3,
+     "unnecessaryDelayPenalty":100,
+     "perfectTimingBonus":50
 }
 
 

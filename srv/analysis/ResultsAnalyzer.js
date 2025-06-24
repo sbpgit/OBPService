@@ -198,6 +198,7 @@ class ResultsAnalyzer {
       },
       performanceMetrics: this.calculatePerformanceMetrics(analysisResults),
       priorityBreakdown: this.calculatePriorityBreakdown(analysisResults),
+      priorityCompliance: this.analyzePriorityCompliance(analysisResults), // New line added 23/06/2025 - Pradeep
       capacityUtilization: this.calculateCapacityUtilization(analysisResults)
     };
 
@@ -258,6 +259,55 @@ class ResultsAnalyzer {
     }
 
     return utilization;
+  }
+
+  //New code addition 23/06/2025-Pradeep
+  analyzePriorityCompliance(analysisResults) {
+    const validOrders = analysisResults.orderResults.filter(order => !order.isInvalid && typeof order.delayDays === 'number');
+    const complianceByPriority = {};
+  
+    for (const order of validOrders) {
+      const priority = order.customerPriority;
+      const priorityCriteria = this.system.getPriorityDeliveryCriteria(priority);
+      const isCompliant = order.delayDays <= priorityCriteria.maxDelayDays;
+  
+      if (!complianceByPriority[priority]) {
+        complianceByPriority[priority] = {
+          priority: priority,
+          maxAllowedDelay: priorityCriteria.maxDelayDays,
+          totalOrders: 0,
+          compliantOrders: 0,
+          nonCompliantOrders: 0,
+          averageDelay: 0,
+          worstDelay: 0,
+          complianceRate: 0
+        };
+      }
+  
+      const stats = complianceByPriority[priority];
+      stats.totalOrders++;
+      
+      if (isCompliant) {
+        stats.compliantOrders++;
+      } else {
+        stats.nonCompliantOrders++;
+      }
+  
+      // Track delay statistics
+      if (order.delayDays > stats.worstDelay) {
+        stats.worstDelay = order.delayDays;
+      }
+    }
+  
+    // Calculate final statistics
+    for (const priority in complianceByPriority) {
+      const stats = complianceByPriority[priority];
+      const priorityOrders = validOrders.filter(o => o.customerPriority === priority);
+      stats.averageDelay = priorityOrders.reduce((sum, o) => sum + o.delayDays, 0) / priorityOrders.length;
+      stats.complianceRate = (stats.compliantOrders / stats.totalOrders * 100).toFixed(1);
+    }
+  
+    return complianceByPriority;
   }
 }
 

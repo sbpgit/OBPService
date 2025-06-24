@@ -217,6 +217,7 @@ class ExcelHandler {
       Operations: this.convertOperationsToArray(planningSystem.operations),
       Sales_Orders: this.convertSalesOrdersToArray(planningSystem.salesOrders),
       Penalty_Rules: this.convertMapToArray(planningSystem.penaltyRules),
+      Priority_Delivery_Criteria: this.convertMapToArray(planningSystem.priorityDeliveryCriteria), // New line added 23/06/2025
       Component_Availability: this.convertComponentAvailabilityToArray(planningSystem.componentAvailability),
       Weekly_Capacity: this.convertWeeklyCapacityToArray(planningSystem.lineRestrictions, planningSystem.weeks)
     };
@@ -230,6 +231,7 @@ class ExcelHandler {
       Order_Results: analysisResults.orderResults,
       Priority_Analysis: this.createPriorityAnalysisData(analysisResults),
       Capacity_Utilization: this.createCapacityUtilizationData(analysisResults),
+      Capacity_Pivot_Table: this.createCapacityPivotTableData(analysisResults, solution), // new line added based on version 3 24/06/2025
       Weekly_Schedule: this.createWeeklyScheduleData(solution, analysisResults),
       Fitness_Evolution: fitnessHistory.map((fitness, index) => ({
         Generation: index + 1,
@@ -239,8 +241,27 @@ class ExcelHandler {
     };
 
     await this.writeExcelFile(filePath, data, true);
+// new code added based on version 3 24/06/2025
+    const pivotFilePath = filePath.replace('.xlsx', '_Capacity_Pivot.xlsx');
+  await this.createCapacityPivotTable(analysisResults, solution, pivotFilePath);
   }
-
+  // new code added based on version 3 24/06/2025
+  createCapacityPivotTableData(analysisResults, solution) {
+    const pivotData = this.generateCapacityPivotData(analysisResults, solution);
+    const result = [];
+    
+    for (const [lineRestriction, weekData] of Object.entries(pivotData)) {
+      for (const [week, quantity] of Object.entries(weekData)) {
+        result.push({
+          Line_Restriction: lineRestriction,
+          Week: week,
+          Scheduled_Quantity: quantity
+        });
+      }
+    }
+    
+    return result;
+  }
   convertMapToArray(map) {
     return Array.from(map.values());
   }
@@ -428,6 +449,162 @@ class ExcelHandler {
     }
 
     return result;
+  }
+
+  //New code added based on version 3 Ashok -24/06/2025
+  async createCapacityPivotTable(analysisResults, solution, filePath) {
+    const pivotData = this.generateCapacityPivotData(analysisResults, solution);
+    
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Capacity_Pivot_Table');
+    
+    // Get unique weeks (columns)
+    const allWeeks = new Set();
+    Object.values(pivotData).forEach(lineData => {
+      Object.keys(lineData).forEach(week => allWeeks.add(week));
+    });
+    
+    const sortedWeeks = Array.from(allWeeks).sort();
+    
+    // Create headers
+    const headers = ['Line_Restriction', ...sortedWeeks, 'Total'];
+    worksheet.columns = headers.map(header => ({
+      header: header,
+      key: header,
+      width: header === 'Line_Restriction' ? 20 : 12
+    }));
+    
+    // Add data rows
+    const totalsByWeek = {};
+    
+    for (const [lineRestriction, weekData] of Object.entries(pivotData)) {
+      const row = { Line_Restriction: lineRestriction };
+      let lineTotal = 0;
+      
+      for (const week of sortedWeeks) {
+        const quantity = weekData[week] || 0;
+        row[week] = quantity;
+        lineTotal += quantity;
+        
+        if (!totalsByWeek[week]) totalsByWeek[week] = 0;
+        totalsByWeek[week] += quantity;
+      }
+      
+      row['Total'] = lineTotal;
+      worksheet.addRow(row);
+    }
+    
+    // Add totals row
+    const totalsRow = { Line_Restriction: 'TOTAL' };
+    let grandTotal = 0;
+    
+    for (const week of sortedWeeks) {
+      totalsRow[week] = totalsByWeek[week] || 0;
+      grandTotal += totalsByWeek[week] || 0;
+    }
+    totalsRow['Total'] = grandTotal;
+    
+    const totalRowIndex = worksheet.addRow(totalsRow).number;
+    
+    // Format the worksheet
+    this.formatPivotTable(worksheet, headers.length, totalRowIndex);
+    
+    await workbook.xlsx.writeFile(filePath);
+  }
+  
+  generateCapacityPivotData(analysisResults, solution) {
+    const pivotData = {};
+    
+    // Initialize all line restrictions
+    for (const orderResult of analysisResults.orderResults) {
+      if (orderResult.isInvalid) continue;
+      
+      const orderNumber = orderResult.orderNumber;
+      const assignment = solution[orderNumber];
+      
+      if (assignment && assignment.operationsAssignment) {
+        const scheduledDate = orderResult.optimizedScheduledDate;
+        
+        // Convert date to week format for grouping
+        const date = moment(scheduledDate);
+        const weekKey = `W${date.format('YYYY-WW')}`;
+        
+        for (const [operationId, lineRestriction] of Object.entries(assignment.operationsAssignment)) {
+          if (!pivotData[lineRestriction]) {
+            pivotData[lineRestriction] = {};
+          }
+          
+          if (!pivotData[lineRestriction][weekKey]) {
+            pivotData[lineRestriction][weekKey] = 0;
+          }
+          
+          pivotData[lineRestriction][weekKey] += orderResult.orderQty;
+        }
+      }
+    }
+    
+    return pivotData;
+  }
+  
+  formatPivotTable(worksheet, columnCount, totalRowIndex) {
+    // Header formatting
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFF' } };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: '366092' }
+    };
+    headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
+    
+    // Total row formatting
+    const totalRow = worksheet.getRow(totalRowIndex);
+    totalRow.font = { bold: true };
+    totalRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'F2F2F2' }
+    };
+    
+    // Total column formatting
+    const totalColumn = worksheet.getColumn(columnCount);
+    totalColumn.font = { bold: true };
+    
+    // Add borders to all cells
+    worksheet.eachRow((row, rowNumber) => {
+      row.eachCell((cell, colNumber) => {
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+        
+        // Center align numbers
+        if (colNumber > 1) {
+          cell.alignment = { horizontal: 'center' };
+        }
+      });
+    });
+    
+    // Conditional formatting for high capacity usage (optional)
+    worksheet.addConditionalFormatting({
+      ref: `B2:${String.fromCharCode(65 + columnCount - 2)}${totalRowIndex - 1}`,
+      rules: [
+        {
+          type: 'cellIs',
+          operator: 'greaterThan',
+          formulae: [10],
+          style: {
+            fill: {
+              type: 'pattern',
+              pattern: 'solid',
+              bgColor: { argb: 'FFE6E6' }
+            }
+          }
+        }
+      ]
+    });
   }
 }
 

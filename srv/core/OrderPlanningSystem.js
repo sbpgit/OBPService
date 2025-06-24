@@ -4,7 +4,7 @@ const moment = require('moment');
 const _ = require('lodash');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
-const Logger = require(path.resolve(__dirname,'../utils/Logger'));
+const Logger = require(path.resolve(__dirname, '../utils/Logger'));
 
 class OrderPlanningSystem {
   constructor(planningStartDate = null, minEarlyDeliveryDays = 7) {
@@ -14,7 +14,9 @@ class OrderPlanningSystem {
     this.salesOrders = new Map();
     this.penaltyRules = new Map();
     this.componentAvailability = new Map();
-    
+    //New Code Change on 23/06/2025- Pradeep
+    this.priorityDeliveryCriteria = new Map();
+    //New Code Change on 23/06/2025- Pradeep
     this.planningStartDate = planningStartDate ? moment(planningStartDate) : moment();
     this.minEarlyDeliveryDays = minEarlyDeliveryDays;
     this.weeks = this.generateWeeks();
@@ -25,12 +27,12 @@ class OrderPlanningSystem {
   generateWeeks(numWeeks = 52) {
     const weeks = [];
     const baseDate = this.planningStartDate.clone();
-    
+
     for (let i = 0; i < numWeeks; i++) {
       const weekStart = baseDate.clone().add(i, 'weeks');
       weeks.push(`W${weekStart.format('YYYY-WW')}`);
     }
-    
+
     return weeks;
   }
 
@@ -51,10 +53,10 @@ class OrderPlanningSystem {
     const promiseDate = moment(order.orderPromiseDate);
     const earliestDeliveryDate = promiseDate.clone().subtract(this.minEarlyDeliveryDays, 'days');
     const constraintDate = moment.max(earliestDeliveryDate, this.planningStartDate);
-    
+
     const earliestWeek = `W${constraintDate.format('YYYY-WW')}`;
     const weekIndex = this.weeks.indexOf(earliestWeek);
-    
+
     return Math.max(weekIndex >= 0 ? weekIndex : this.currentWeekIndex, this.currentWeekIndex);
   }
 
@@ -91,9 +93,30 @@ class OrderPlanningSystem {
     this.logger.info(`Added component availability: ${componentAvailability.componentId}`);
   }
 
+  //New code addition 23/06/2025- Pradeep
+  addPriorityDeliveryCriteria(criteria) {
+    this.priorityDeliveryCriteria.set(criteria.customerPriority, criteria);
+    this.logger.info(`Added priority delivery criteria: ${criteria.customerPriority}`);
+  }
+
+  getPriorityDeliveryCriteria(customerPriority) {
+    return this.priorityDeliveryCriteria.get(customerPriority) || {
+      customerPriority: customerPriority,
+      maxDelayDays: 7,
+      penaltyMultiplier: 2.0,
+      description: 'Default criteria'
+    };
+  }
+
+  isDelayAcceptableForPriority(customerPriority, delayDays) {
+    const criteria = this.getPriorityDeliveryCriteria(customerPriority);
+    return delayDays <= criteria.maxDelayDays;
+  }
+  //New code addition 23/06/2025- Pradeep
+
   loadSampleData() {
     this.logger.info('Loading sample forklift manufacturing data...');
-    
+
     // Products (Forklifts)
     const products = [
       { productId: 'FL001', productName: 'Electric Forklift 2T', productDescription: '2-ton electric forklift with 3m lift height' },
@@ -102,7 +125,7 @@ class OrderPlanningSystem {
       { productId: 'FL004', productName: 'Diesel Forklift 5T', productDescription: '5-ton heavy-duty diesel forklift' },
       { productId: 'FL005', productName: 'Electric Pallet Jack', productDescription: 'Electric pallet jack for light operations' }
     ];
-    
+
     products.forEach(product => this.addProduct(product));
 
     // Line Restrictions
@@ -142,7 +165,7 @@ class OrderPlanningSystem {
       Array.from(this.products.keys()).forEach(productId => {
         const lateDeliveryPenalty = priority === 'High' ? 100.0 : priority === 'Medium' ? 50.0 : 25.0;
         const noFulfillmentPenalty = priority === 'High' ? 1000.0 : priority === 'Medium' ? 500.0 : 200.0;
-        
+
         this.addPenaltyRule({
           customerPriority: priority,
           productId: productId,
@@ -152,9 +175,19 @@ class OrderPlanningSystem {
       });
     });
 
+    //New code addition 23/06/2025- Pradeep
+    // Priority Delivery Criteria
+    const priorityCriteria = [
+      { customerPriority: 'Critical', maxDelayDays: 0, penaltyMultiplier: 5.0, description: 'Must be on time or early' },
+      { customerPriority: 'High', maxDelayDays: 0, penaltyMultiplier: 3.0, description: 'Must be on time or early' },
+      { customerPriority: 'Medium', maxDelayDays: 7, penaltyMultiplier: 2.0, description: 'Up to 1 week delay allowed' },
+      { customerPriority: 'Low', maxDelayDays: 14, penaltyMultiplier: 1.0, description: 'Up to 2 weeks delay allowed' }
+    ];
+    priorityCriteria.forEach(criteria => this.addPriorityDeliveryCriteria(criteria));
+
     // Generate sample sales orders
     this.generateSampleSalesOrders();
-    
+
     this.logger.info(`Loaded ${this.salesOrders.size} sample sales orders`);
   }
 
@@ -178,22 +211,22 @@ class OrderPlanningSystem {
     const orderCount = 50;
     const productIds = Array.from(this.products.keys());
     const priorities = ['High', 'Medium', 'Low'];
-    
+
     for (let i = 1; i <= orderCount; i++) {
       const orderNumber = `SO${i.toString().padStart(4, '0')}`;
       const productId = productIds[Math.floor(Math.random() * productIds.length)];
-      
+
       // Promise dates 1-12 weeks from planning start
       const weeksFromNow = Math.floor(Math.random() * 12) + 1;
       const promiseDate = this.planningStartDate.clone().add(weeksFromNow, 'weeks').toDate();
-      
+
       const qty = Math.floor(Math.random() * 5) + 1;
       const revenue = (Math.random() * 35000 + 15000) * qty;
       const cost = revenue * (Math.random() * 0.2 + 0.6);
       const priority = priorities[Math.floor(Math.random() * priorities.length)];
-      
+
       const operations = ['0010', '0020', '0030', '0040'];
-      
+
       const components = {
         'Engine': qty,
         'Chassis': qty,
@@ -227,6 +260,7 @@ class OrderPlanningSystem {
       salesOrders: Object.fromEntries(this.salesOrders),
       penaltyRules: Object.fromEntries(this.penaltyRules),
       componentAvailability: Object.fromEntries(this.componentAvailability),
+      priorityDeliveryCriteria: Object.fromEntries(this.priorityDeliveryCriteria),//New line added 23/06/2025-Pradeep
       weeks: this.weeks,
       currentWeekIndex: this.currentWeekIndex
     };
