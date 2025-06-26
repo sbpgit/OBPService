@@ -4,7 +4,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
-
+const moment = require('moment');
 const OrderPlanningSystem = require(path.resolve(__dirname, '../core/OrderPlanningSystem'));
 const GeneticAlgorithmOptimizer = require(path.resolve(__dirname, '../optimization/GeneticAlgorithmOptimizer'));
 const ResultsAnalyzer = require(path.resolve(__dirname, '../analysis/ResultsAnalyzer'));
@@ -331,140 +331,225 @@ router.post('/optimize/stop', (req, res) => {
 
 
 // Helper methods
-router.createPlanningSystemFromExcel = async function (data, planningStartDate, minEarlyDeliveryDays) {
+router.createPlanningSystemFromExcel = async function(data, planningStartDate, minEarlyDeliveryDays) {
   const planningSystem = new OrderPlanningSystem(planningStartDate, minEarlyDeliveryDays);
 
-  // Load products
-  if (data.Products) {
-    data.Products.forEach(product => {
-      planningSystem.addProduct({
-        productId: product.Product_ID || product.productId || product["Product Id"],
-        productName: product.Product_Name || product.productName || product["Product Name"],
-        productDescription: product.Product_Description || product.productDescription || product["Product Description"]
+  try {
+    // Load products with validation
+    if (data.Products && Array.isArray(data.Products)) {
+      data.Products.forEach((product, index) => {
+        try {
+          const productData = {
+            productId: product.Product_ID || product.productId ||product["Product Id"]|| `PRODUCT_${index}`,
+            productName: product.Product_Name || product.productName ||product["Product Name"]|| `Product ${index}`,
+            productDescription: product.Product_Description || product.productDescription ||product["Product Description"]|| `Description ${index}`
+          };
+          planningSystem.addProduct(productData);
+        } catch (error) {
+          console.error(`Error loading product ${index}:`, error);
+        }
       });
-    });
-  }
+    }
 
-  // Load line restrictions
-  if (data.Line_Restrictions && data.Weekly_Capacity) {
-    const capacityMap = {};
-    data.Weekly_Capacity.forEach(capacity => {
-      if (!capacityMap[capacity.Restriction_Name || capacity.restrictionName || "Restriction Name"]) {
-        capacityMap[capacity.Restriction_Name || capacity.restrictionName || "Restriction Name"] = {};
-      }
-      capacityMap[capacity.Restriction_Name || capacity.restrictionName || "Restriction Name"][capacity.Week || capacity.week] =
-        capacity.Capacity || capacity.capacity;
-    });
-
-    data.Line_Restrictions.forEach(restriction => {
-      const name = restriction.Restriction_Name || restriction.restrictionName || restriction["Restriction Name"];
-      planningSystem.addLineRestriction({
-        restrictionName: name,
-        validity: restriction.Validity !== undefined ? restriction.Validity : restriction.validity,
-        penaltyCost: restriction.Penalty_Cost || restriction.penaltyCost || restriction["Penalty Cost"],
-        weeklyCapacity: capacityMap[name] || {}
-      });
-    });
-  }
-
-  // Load operations
-  if (data.Operations) {
-    data.Operations.forEach(operation => {
-      const alternates = (operation.Alternate_Line_Restrictions || operation.alternateLineRestrictions || '' || operation["Alternate Line Restrictions"])
-        .split(',').map(s => s.trim()).filter(s => s);
-
-      planningSystem.addOperation({
-        operationId: operation.Operation_ID || operation.operationId || operation["Operation Id"],
-        primaryLineRestriction: operation.Primary_Line_Restriction || operation.primaryLineRestriction || operation["Primary Line Restriction"],
-        alternateLineRestrictions: alternates
-      });
-    });
-  }
-
-  // Load sales orders
-  if (data.Sales_Orders) {
-    data.Sales_Orders.forEach(order => {
-      const operations = (order.Operations || order.operations || '')
-        .split(',').map(s => s.trim()).filter(s => s);
-
-      const components = {};
-      const componentsStr = order.Components_Required || order.componentsRequired || order["Components Required"] || '';
-      if (componentsStr) {
-        componentsStr.split(',').forEach(comp => {
-          const [name, qty] = comp.split(':').map(s => s.trim());
-          if (name && qty) {
-            components[name] = parseInt(qty) || 0;
+    // Load line restrictions with weekly capacity
+    if (data.Line_Restrictions && Array.isArray(data.Line_Restrictions)) {
+      // First, collect weekly capacity data
+      const capacityMap = {};
+      if (data.Weekly_Capacity && Array.isArray(data.Weekly_Capacity)) {
+        data.Weekly_Capacity.forEach((capacity) => {
+          try {
+            const restrictionName = capacity.Restriction_Name || capacity.restrictionName ||capacity["Restriction Name"];
+            const week = capacity.Week || capacity.week;
+            const capacityValue = parseInt(capacity.Capacity || capacity.capacity) || 0;
+            
+            if (restrictionName && week) {
+              if (!capacityMap[restrictionName]) {
+                capacityMap[restrictionName] = {};
+              }
+              capacityMap[restrictionName][week] = capacityValue;
+            }
+          } catch (error) {
+            console.error('Error loading capacity data:', error);
           }
         });
       }
 
-      planningSystem.addSalesOrder({
-        orderNumber: order.Order_Number || order.orderNumber || order["Order Number"],
-        productId: order.Product_ID || order.productId || order["Product Id"],
-        orderPromiseDate: order.Order_Promise_Date || order.orderPromiseDate || order["Order Promise Date"],
-        orderQty: order.Order_Qty || order.orderQty || order["Order Qty"],
-        revenue: order.Revenue || order.revenue,
-        cost: order.Cost || order.cost,
-        customerPriority: order.Customer_Priority || order.customerPriority || order["Customer Priority"],
-        operations: operations,
-        components: components
-      });
-    });
-  }
+      // Create line restrictions
+      data.Line_Restrictions.forEach((restriction, index) => {
+        try {
+          const name = restriction.Restriction_Name || restriction.restrictionName || restriction["Restriction Name"]||`RESTRICTION_${index}`;
+          const validity = restriction.Validity !== undefined ? restriction.Validity : 
+                          restriction.validity !== undefined ? restriction.validity : true;
+          const penaltyCost = parseFloat(restriction.Penalty_Cost || restriction.penaltyCost) ||restriction["Penalty Cost"]|| 500;
+          
+          let weeklyCapacity = capacityMap[name] || {};
+          
+          // If no weekly capacity data, create default
+          if (Object.keys(weeklyCapacity).length === 0) {
+            const defaultCapacity = parseInt(restriction.Avg_Weekly_Capacity || restriction.avgWeeklyCapacity ||restriction["Avg Weekly Capacity"]) || 10;
+            planningSystem.weeks.forEach(week => {
+              weeklyCapacity[week] = defaultCapacity;
+            });
+          }
 
-  // Load penalty rules
-  if (data.Penalty_Rules) {
-    data.Penalty_Rules.forEach(rule => {
-      planningSystem.addPenaltyRule({
-        customerPriority: rule.Customer_Priority || rule.customerPriority || rule["Customer Priority"],
-        productId: rule.Product_ID || rule.productId || rule["Product Id"],
-        lateDeliveryPenalty: rule.Late_Delivery_Penalty || rule.lateDeliveryPenalty || rule["Late Delivery Penalty"],
-        noFulfillmentPenalty: rule.No_Fulfillment_Penalty || rule.noFulfillmentPenalty || rule["No Fulfillment Penalty"]
-      });
-    });
-  }
+          const restrictionData = {
+            restrictionName: name,
+            validity: validity,
+            penaltyCost: penaltyCost,
+            weeklyCapacity: weeklyCapacity
+          };
 
-  // Load component availability
-  if (data.Component_Availability) {
-    const componentMap = {};
-    data.Component_Availability.forEach(comp => {
-      const componentId = comp.Component_ID || comp.componentId || comp["Component Id"];
-      if (!componentMap[componentId]) {
-        componentMap[componentId] = {};
-      }
-      componentMap[componentId][comp.Week || comp.week] = comp.Available_Quantity || comp.availableQuantity || comp["Component Id"];
-    });
-
-    for (const [componentId, weeklyAvailability] of Object.entries(componentMap)) {
-      planningSystem.addComponentAvailability({
-        componentId: componentId,
-        weeklyAvailability: weeklyAvailability
+          planningSystem.addLineRestriction(restrictionData);
+        } catch (error) {
+          console.error(`Error loading restriction ${index}:`, error);
+        }
       });
     }
+
+    // Load operations with error handling
+    if (data.Operations && Array.isArray(data.Operations)) {
+      data.Operations.forEach((operation, index) => {
+        try {
+          const alternatesStr = operation.Alternate_Line_Restrictions || operation.alternateLineRestrictions ||operation["Alternate Line Restrictions"]|| '';
+          const alternates = alternatesStr ? 
+            alternatesStr.split(',').map(s => s.trim()).filter(s => s && s !== 'nan' && s !== 'null') : 
+            [];
+          
+          planningSystem.addOperation({
+            operationId: operation.Operation_ID || operation.operationId ||operation["Operation Id"]|| `OP_${index}`,
+            primaryLineRestriction: operation.Primary_Line_Restriction || operation.primaryLineRestriction ||operation["Primary Line Restriction"]|| 'DEFAULT_LINE',
+            alternateLineRestrictions: alternates
+          });
+        } catch (error) {
+          console.error(`Error loading operation ${index}:`, error);
+        }
+      });
+    }
+
+    // Load sales orders with comprehensive error handling
+    if (data.Sales_Orders && Array.isArray(data.Sales_Orders)) {
+      data.Sales_Orders.forEach((order, index) => {
+        try {
+          // Parse components
+          const components = {};
+          const componentsStr = order.Components_Required || order.componentsRequired ||order["Components Required"] || '';
+          if (componentsStr) {
+            componentsStr.split(',').forEach(comp => {
+              const parts = comp.split(':');
+              if (parts.length === 2) {
+                const name = parts[0].trim();
+                const qty = parseInt(parts[1].trim()) || 0;
+                if (name && qty > 0) {
+                  components[name] = qty;
+                }
+              }
+            });
+          }
+
+          // Parse operations
+          const operationsStr = order.Operations || order.operations || '';
+          const operations = operationsStr ? 
+            operationsStr.split(',').map(op => op.trim()).filter(op => op) : 
+            ['DEFAULT_OP'];
+
+          // Parse date
+          let promiseDate;
+          try {
+            promiseDate = moment(order.Order_Promise_Date || order.orderPromiseDate||order["Order Promise Date"]).toDate();
+            if (!moment(promiseDate).isValid()) {
+              promiseDate = moment().add(7, 'days').toDate(); // Default to 1 week from now
+            }
+          } catch (error) {
+            promiseDate = moment().add(7, 'days').toDate();
+          }
+
+          planningSystem.addSalesOrder({
+            orderNumber: order.Order_Number || order.orderNumber ||order["Order Number"] || `SO_${index}`,
+            productId: order.Product_ID || order.productId ||order["Product Id"] || 'DEFAULT_PRODUCT',
+            orderPromiseDate: promiseDate,
+            orderQty: parseInt(order.Order_Qty || order.orderQty||order["Order Qty"]) || 1,
+            revenue: parseFloat(order.Revenue || order.revenue) || 1000,
+            cost: parseFloat(order.Cost || order.cost) || 800,
+            customerPriority: order.Customer_Priority || order.customerPriority ||order["Customer Priority"]|| 'Medium',
+            operations: operations,
+            components: components
+          });
+        } catch (error) {
+          console.error(`Error loading sales order ${index}:`, error);
+        }
+      });
+    }
+
+    // Load penalty rules
+    if (data.Penalty_Rules && Array.isArray(data.Penalty_Rules)) {
+      data.Penalty_Rules.forEach((rule, index) => {
+        try {
+          planningSystem.addPenaltyRule({
+            customerPriority: rule.Customer_Priority || rule.customerPriority ||rule["Customer Priority"]|| 'Medium',
+            productId: rule.Product_ID || rule.productId ||rule["Product Id"]|| 'DEFAULT_PRODUCT',
+            lateDeliveryPenalty: parseFloat(rule.Late_Delivery_Penalty || rule.lateDeliveryPenalty||rule["Late Delivery Penalty"]) || 100,
+            noFulfillmentPenalty: parseFloat(rule.No_Fulfillment_Penalty || rule.noFulfillmentPenalty||rule["No Fulfillment Penalty"]) || 1000
+          });
+        } catch (error) {
+          console.error(`Error loading penalty rule ${index}:`, error);
+        }
+      });
+    }
+
+    // Load priority delivery criteria
+    if (data.Priority_Delivery_Criteria && Array.isArray(data.Priority_Delivery_Criteria)) {
+      data.Priority_Delivery_Criteria.forEach((criteria, index) => {
+        try {
+          planningSystem.addPriorityDeliveryCriteria({
+            customerPriority: criteria.Customer_Priority || criteria.customerPriority ||criteria["Customer Priority"]|| 'Medium',
+            maxDelayDays: parseInt(criteria.Max_Delay_Days || criteria.maxDelayDays || criteria["Max Delay Days"])||7,
+            penaltyMultiplier: parseFloat(criteria.Penalty_Multiplier || criteria.penaltyMultiplier||criteria["Penalty Multiplier"]) || 2.0,
+            description: criteria.Description || criteria.description ||criteria["Description"]|| 'Loaded from Excel'
+          });
+        } catch (error) {
+          console.error(`Error loading priority criteria ${index}:`, error);
+        }
+      });
+    }
+
+    // Load component availability
+    if (data.Component_Availability && Array.isArray(data.Component_Availability)) {
+      const componentMap = {};
+      
+      data.Component_Availability.forEach((comp) => {
+        try {
+          const componentId = comp.Component_ID || comp.componentId||comp["Component Id"];
+          const week = comp.Week || comp.week;
+          const quantity = parseInt(comp.Available_Quantity || comp.availableQuantity||comp["Available Quantity"]) || 0;
+          
+          if (componentId && week) {
+            if (!componentMap[componentId]) {
+              componentMap[componentId] = {};
+            }
+            componentMap[componentId][week] = quantity;
+          }
+        } catch (error) {
+          console.error('Error loading component availability:', error);
+        }
+      });
+
+      for (const [componentId, weeklyData] of Object.entries(componentMap)) {
+        planningSystem.addComponentAvailability({
+          componentId: componentId,
+          weeklyAvailability: weeklyData
+        });
+      }
+    }
+
+    // Ensure data integrity
+    planningSystem.ensureDataIntegrity();
+
+    return planningSystem;
+
+  } catch (error) {
+    console.error('Critical error in createPlanningSystemFromExcel:', error);
+    throw error;
   }
-
-  // Load Priority Delivery Criteria
-if (data.Priority_Delivery_Criteria) {
-  data.Priority_Delivery_Criteria.forEach(criteria => {
-    planningSystem.addPriorityDeliveryCriteria({
-      customerPriority: criteria.Customer_Priority || criteria.customerPriority || criteria["Customer Priority"],
-      maxDelayDays: criteria.Max_Delay_Days || criteria.maxDelayDays || criteria["Max Delay Days"]|| 7,
-      penaltyMultiplier: criteria.Penalty_Multiplier || criteria.penaltyMultiplier || criteria["Penalty Multiplier"]|| 2.0,
-      description: criteria.Description || criteria.description || criteria["Description"] ||''
-    });
-  });
-} else {
-  // Load default criteria if not provided
-  const defaultCriteria = [
-    { customerPriority: 'Critical', maxDelayDays: 0, penaltyMultiplier: 5.0, description: 'Must be on time or early' },
-    { customerPriority: 'High', maxDelayDays: 0, penaltyMultiplier: 3.0, description: 'Must be on time or early' },
-    { customerPriority: 'Medium', maxDelayDays: 7, penaltyMultiplier: 2.0, description: 'Up to 1 week delay allowed' },
-    { customerPriority: 'Low', maxDelayDays: 14, penaltyMultiplier: 1.0, description: 'Up to 2 weeks delay allowed' }
-  ];
-  defaultCriteria.forEach(criteria => planningSystem.addPriorityDeliveryCriteria(criteria));
-}
-
-  return planningSystem;
 };
 
 router.createPlanningSystemFromJSON = function (jsonData) {
@@ -565,10 +650,10 @@ router.calculateTimingMetrics = function (analysisResults) {
 //New code changes 23/06/2025-Pradeep
 //New code changes 24/06/2025 based on version 3-Pradeep
 
-router.analyzeCapacityViolations = function(analysisResults) {
+router.analyzeCapacityViolations = function (analysisResults) {
   const violations = [];
   let totalViolations = 0;
-  
+
   // This would need access to the solution and system to calculate violations
   // For now, return summary stats
   return {

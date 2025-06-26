@@ -99,13 +99,57 @@ class OrderPlanningSystem {
     this.logger.info(`Added priority delivery criteria: ${criteria.customerPriority}`);
   }
 
+  // getPriorityDeliveryCriteria(customerPriority) {
+  //   return this.priorityDeliveryCriteria.get(customerPriority) || {
+  //     customerPriority: customerPriority,
+  //     maxDelayDays: 7,
+  //     penaltyMultiplier: 2.0,
+  //     description: 'Default criteria'
+  //   };
+  // }
+  //New code replacing above function version4 25/06/2025
   getPriorityDeliveryCriteria(customerPriority) {
-    return this.priorityDeliveryCriteria.get(customerPriority) || {
+    // First check if criteria exists
+    if (this.priorityDeliveryCriteria.has(customerPriority)) {
+      return this.priorityDeliveryCriteria.get(customerPriority);
+    }
+
+    // Create dynamic default based on priority name analysis
+    let maxDelayDays = 7;
+    let penaltyMultiplier = 2.0;
+    let description = 'Default criteria';
+
+    const priorityLower = customerPriority.toLowerCase();
+
+    if (priorityLower.includes('critical') || priorityLower.includes('urgent') || priorityLower.includes('emergency')) {
+      maxDelayDays = 0;
+      penaltyMultiplier = 5.0;
+      description = 'Critical priority - must be on time or early';
+    } else if (priorityLower.includes('high') || priorityLower.includes('important') || priorityLower.includes('priority')) {
+      maxDelayDays = 0;
+      penaltyMultiplier = 3.0;
+      description = 'High priority - must be on time or early';
+    } else if (priorityLower.includes('medium') || priorityLower.includes('normal') || priorityLower.includes('standard')) {
+      maxDelayDays = 7;
+      penaltyMultiplier = 2.0;
+      description = 'Medium priority - up to 1 week delay allowed';
+    } else if (priorityLower.includes('low') || priorityLower.includes('flexible') || priorityLower.includes('when possible')) {
+      maxDelayDays = 14;
+      penaltyMultiplier = 1.0;
+      description = 'Low priority - up to 2 weeks delay allowed';
+    }
+
+    const defaultCriteria = {
       customerPriority: customerPriority,
-      maxDelayDays: 7,
-      penaltyMultiplier: 2.0,
-      description: 'Default criteria'
+      maxDelayDays: maxDelayDays,
+      penaltyMultiplier: penaltyMultiplier,
+      description: description
     };
+
+    // Cache the default for future use
+    this.priorityDeliveryCriteria.set(customerPriority, defaultCriteria);
+
+    return defaultCriteria;
   }
 
   isDelayAcceptableForPriority(customerPriority, delayDays) {
@@ -177,16 +221,30 @@ class OrderPlanningSystem {
 
     //New code addition 23/06/2025- Pradeep
     // Priority Delivery Criteria
-    const priorityCriteria = [
-      { customerPriority: 'Critical', maxDelayDays: 0, penaltyMultiplier: 5.0, description: 'Must be on time or early' },
-      { customerPriority: 'High', maxDelayDays: 0, penaltyMultiplier: 3.0, description: 'Must be on time or early' },
-      { customerPriority: 'Medium', maxDelayDays: 7, penaltyMultiplier: 2.0, description: 'Up to 1 week delay allowed' },
-      { customerPriority: 'Low', maxDelayDays: 14, penaltyMultiplier: 1.0, description: 'Up to 2 weeks delay allowed' }
-    ];
-    priorityCriteria.forEach(criteria => this.addPriorityDeliveryCriteria(criteria));
+    // const priorityCriteria = [
+    //   { customerPriority: 'Critical', maxDelayDays: 0, penaltyMultiplier: 5.0, description: 'Must be on time or early' },
+    //   { customerPriority: 'High', maxDelayDays: 0, penaltyMultiplier: 3.0, description: 'Must be on time or early' },
+    //   { customerPriority: 'Medium', maxDelayDays: 7, penaltyMultiplier: 2.0, description: 'Up to 1 week delay allowed' },
+    //   { customerPriority: 'Low', maxDelayDays: 14, penaltyMultiplier: 1.0, description: 'Up to 2 weeks delay allowed' }
+    // ];
+    // priorityCriteria.forEach(criteria => this.addPriorityDeliveryCriteria(criteria));
 
     // Generate sample sales orders
     this.generateSampleSalesOrders();
+    //New code added version4 25/06/2025
+    // Create priority delivery criteria based on actual priorities used
+    const usedPriorities = new Set();
+    for (const order of this.salesOrders.values()) {
+      usedPriorities.add(order.customerPriority);
+    }
+
+    // Create criteria for each priority found
+    for (const priority of usedPriorities) {
+      if (!this.priorityDeliveryCriteria.has(priority)) {
+        // This will create appropriate default criteria
+        this.getPriorityDeliveryCriteria(priority);
+      }
+    }
 
     this.logger.info(`Loaded ${this.salesOrders.size} sample sales orders`);
   }
@@ -264,6 +322,51 @@ class OrderPlanningSystem {
       weeks: this.weeks,
       currentWeekIndex: this.currentWeekIndex
     };
+  }
+
+  ensureDataIntegrity() {
+    // Ensure all sales orders have valid operations
+    for (const [orderNumber, order] of this.salesOrders.entries()) {
+      if (!order.operations || order.operations.length === 0) {
+        order.operations = ['DEFAULT_OP'];
+      }
+      
+      // Ensure operations exist in system
+      for (const operationId of order.operations) {
+        if (!this.operations.has(operationId)) {
+          const availableLines = Array.from(this.lineRestrictions.keys());
+          this.operations.set(operationId, {
+            operationId: operationId,
+            primaryLineRestriction: availableLines[0] || 'DEFAULT_LINE',
+            alternateLineRestrictions: availableLines.slice(1) || []
+          });
+        }
+      }
+    }
+    
+    // Ensure line restrictions have capacity data
+    for (const [lineName, restriction] of this.lineRestrictions.entries()) {
+      if (!restriction.weeklyCapacity || Object.keys(restriction.weeklyCapacity).length === 0) {
+        restriction.weeklyCapacity = {};
+        this.weeks.forEach(week => {
+          restriction.weeklyCapacity[week] = 10; // Default capacity
+        });
+      }
+    }
+    
+    // Ensure priority criteria exist for all customer priorities
+    const usedPriorities = new Set();
+    for (const order of this.salesOrders.values()) {
+      if (order.customerPriority) {
+        usedPriorities.add(order.customerPriority);
+      }
+    }
+    
+    for (const priority of usedPriorities) {
+      if (!this.priorityDeliveryCriteria.has(priority)) {
+        this.getPriorityDeliveryCriteria(priority);
+      }
+    }
   }
 }
 module.exports = OrderPlanningSystem;

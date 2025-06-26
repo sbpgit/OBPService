@@ -96,7 +96,7 @@ class ExcelHandler {
   async writeExcelFile(filePath, data, formatting = true) {
     try {
       this.logger.info(`Writing Excel file: ${filePath}`);
-
+      
       if (formatting) {
         await this.writeFormattedExcel(filePath, data);
       } else {
@@ -108,17 +108,6 @@ class ExcelHandler {
       this.logger.error(`Error writing Excel file: ${error.message}`);
       throw error;
     }
-  }
-
-  async writeSimpleExcel(filePath, data) {
-    const workbook = XLSX.utils.book_new();
-
-    for (const [sheetName, sheetData] of Object.entries(data)) {
-      const worksheet = XLSX.utils.json_to_sheet(sheetData);
-      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-    }
-
-    XLSX.writeFile(workbook, filePath);
   }
 
   async writeFormattedExcel(filePath, data) {
@@ -169,83 +158,32 @@ class ExcelHandler {
     await workbook.xlsx.writeFile(filePath);
   }
 
-  formatHeader(header) {
-    return header.replace(/([A-Z])/g, ' $1')
-      .replace(/^./, str => str.toUpperCase())
-      .replace(/_/g, ' ');
-  }
-
-  getColumnWidth(header) {
-    const widths = {
-      orderNumber: 15,
-      productId: 12,
-      customerPriority: 15,
-      originalPromiseDate: 18,
-      optimizedScheduledDate: 20,
-      delayDays: 12,
-      revenue: 15,
-      default: 12
-    };
-
-    return widths[header] || widths.default;
-  }
-
-  formatWorksheetColumns(worksheet, sheetName) {
-    if (sheetName === 'Order_Results') {
-      // Format currency columns
-      const revenueColumn = worksheet.getColumn('revenue');
-      revenueColumn.numFmt = '$#,##0.00';
-
-      // Format date columns
-      const promiseDateColumn = worksheet.getColumn('originalPromiseDate');
-      promiseDateColumn.numFmt = 'yyyy-mm-dd';
-
-      const scheduledDateColumn = worksheet.getColumn('optimizedScheduledDate');
-      scheduledDateColumn.numFmt = 'yyyy-mm-dd';
-    }
-
-    if (sheetName === 'Summary') {
-      // Format summary values
-      worksheet.getColumn('Value').alignment = { horizontal: 'right' };
-    }
-  }
-
-  async createSampleDataFile(planningSystem, filePath) {
-    const data = {
-      Products: this.convertMapToArray(planningSystem.products),
-      Line_Restrictions: this.convertLineRestrictionsToArray(planningSystem.lineRestrictions),
-      Operations: this.convertOperationsToArray(planningSystem.operations),
-      Sales_Orders: this.convertSalesOrdersToArray(planningSystem.salesOrders),
-      Penalty_Rules: this.convertMapToArray(planningSystem.penaltyRules),
-      Priority_Delivery_Criteria: this.convertMapToArray(planningSystem.priorityDeliveryCriteria), // New line added 23/06/2025
-      Component_Availability: this.convertComponentAvailabilityToArray(planningSystem.componentAvailability),
-      Weekly_Capacity: this.convertWeeklyCapacityToArray(planningSystem.lineRestrictions, planningSystem.weeks)
-    };
-
-    await this.writeExcelFile(filePath, data, true);
-  }
-
   async createResultsFile(analysisResults, solution, fitnessHistory, filePath) {
     const data = {
       Summary: this.createSummaryData(analysisResults),
-      Order_Results: analysisResults.orderResults,
+      Order_Results: analysisResults.orderResults || [],
       Priority_Analysis: this.createPriorityAnalysisData(analysisResults),
       Capacity_Utilization: this.createCapacityUtilizationData(analysisResults),
-      Capacity_Pivot_Table: this.createCapacityPivotTableData(analysisResults, solution), // new line added based on version 3 24/06/2025
+      Capacity_Pivot_Table: this.createCapacityPivotTableData(analysisResults, solution),
       Weekly_Schedule: this.createWeeklyScheduleData(solution, analysisResults),
-      Fitness_Evolution: fitnessHistory.map((fitness, index) => ({
+      Fitness_Evolution: (fitnessHistory || []).map((fitness, index) => ({
         Generation: index + 1,
-        Fitness_Score: fitness
+        Fitness_Score: fitness || 0
       })),
       Component_Analysis: this.createComponentAnalysisData(analysisResults)
     };
 
     await this.writeExcelFile(filePath, data, true);
-// new code added based on version 3 24/06/2025
-    const pivotFilePath = filePath.replace('.xlsx', '_Capacity_Pivot.xlsx');
-  await this.createCapacityPivotTable(analysisResults, solution, pivotFilePath);
+    
+    // Also create separate pivot table file
+    try {
+      const pivotFilePath = filePath.replace('.xlsx', '_Capacity_Pivot.xlsx');
+      await this.createCapacityPivotTable(analysisResults, solution, pivotFilePath);
+    } catch (error) {
+      this.logger.warn('Could not create separate pivot table:', error.message);
+    }
   }
-  // new code added based on version 3 24/06/2025
+
   createCapacityPivotTableData(analysisResults, solution) {
     const pivotData = this.generateCapacityPivotData(analysisResults, solution);
     const result = [];
@@ -255,205 +193,89 @@ class ExcelHandler {
         result.push({
           Line_Restriction: lineRestriction,
           Week: week,
-          Scheduled_Quantity: quantity
+          Scheduled_Quantity: quantity || 0
         });
       }
     }
     
     return result;
   }
-  convertMapToArray(map) {
-    return Array.from(map.values());
-  }
 
-  convertLineRestrictionsToArray(lineRestrictions) {
-    return Array.from(lineRestrictions.values()).map(lr => ({
-      restrictionName: lr.restrictionName,
-      validity: lr.validity,
-      penaltyCost: lr.penaltyCost,
-      avgWeeklyCapacity: this.calculateAverageCapacity(lr.weeklyCapacity)
-    }));
-  }
-
-  convertOperationsToArray(operations) {
-    return Array.from(operations.values()).map(op => ({
-      operationId: op.operationId,
-      primaryLineRestriction: op.primaryLineRestriction,
-      alternateLineRestrictions: op.alternateLineRestrictions.join(', ')
-    }));
-  }
-
-  convertSalesOrdersToArray(salesOrders) {
-    return Array.from(salesOrders.values()).map(so => ({
-      orderNumber: so.orderNumber,
-      productId: so.productId,
-      orderPromiseDate: moment(so.orderPromiseDate).format('YYYY-MM-DD'),
-      orderQty: so.orderQty,
-      revenue: so.revenue,
-      cost: so.cost,
-      customerPriority: so.customerPriority,
-      operations: so.operations.join(', '),
-      componentsRequired: this.formatComponents(so.components)
-    }));
-  }
-
-  convertComponentAvailabilityToArray(componentAvailability) {
-    const result = [];
-    for (const [componentId, availability] of componentAvailability) {
-      for (const [week, quantity] of Object.entries(availability.weeklyAvailability)) {
-        result.push({
-          componentId: componentId,
-          week: week,
-          availableQuantity: quantity
-        });
-      }
+  generateCapacityPivotData(analysisResults, solution) {
+    const pivotData = {};
+    
+    if (!analysisResults || !analysisResults.orderResults || !solution) {
+      return pivotData;
     }
-    return result;
-  }
-
-  convertWeeklyCapacityToArray(lineRestrictions, weeks) {
-    const result = [];
-    for (const [restrictionName, restriction] of lineRestrictions) {
-      for (const week of weeks.slice(0, 12)) { // First 12 weeks
-        result.push({
-          restrictionName: restrictionName,
-          week: week,
-          capacity: restriction.weeklyCapacity[week] || 0
-        });
-      }
-    }
-    return result;
-  }
-
-  calculateAverageCapacity(weeklyCapacity) {
-    const values = Object.values(weeklyCapacity);
-    return values.length > 0 ? values.reduce((sum, val) => sum + val, 0) / values.length : 0;
-  }
-
-  formatComponents(components) {
-    return Object.entries(components)
-      .filter(([_, qty]) => qty > 0)
-      .map(([comp, qty]) => `${comp}:${qty}`)
-      .join(', ');
-  }
-
-  createSummaryData(analysisResults) {
-    return [
-      { Metric: 'Planning Start Date', Value: analysisResults.planningStartDate },
-      { Metric: 'Min Early Delivery Days', Value: analysisResults.minEarlyDeliveryDays },
-      { Metric: 'Total Orders', Value: analysisResults.orderResults.length },
-      { Metric: 'Valid Assignments', Value: analysisResults.totalValidOrders },
-      { Metric: 'Invalid Assignments (Past)', Value: analysisResults.invalidAssignments },
-      { Metric: 'Too Early Assignments', Value: analysisResults.ordersTooEarly },
-      { Metric: 'Orders On Time', Value: analysisResults.ordersOnTime },
-      { Metric: 'Orders Early (Within Window)', Value: analysisResults.ordersEarly },
-      { Metric: 'Orders Late', Value: analysisResults.ordersLate },
-      { Metric: 'On-Time Percentage (%)', Value: analysisResults.onTimePercentage.toFixed(1) },
-      { Metric: 'Total Penalty Cost ($)', Value: analysisResults.totalPenalty.toFixed(2) }
-    ];
-  }
-
-  createPriorityAnalysisData(analysisResults) {
-    const validOrders = analysisResults.orderResults.filter(order => !order.isInvalid);
-    const priorityGroups = {};
-
-    for (const order of validOrders) {
-      if (!priorityGroups[order.customerPriority]) {
-        priorityGroups[order.customerPriority] = {
-          customerPriority: order.customerPriority,
-          totalOrders: 0,
-          lateOrders: 0,
-          totalRevenue: 0,
-          delaySum: 0,
-          delayCount: 0
-        };
-      }
-
-      const group = priorityGroups[order.customerPriority];
-      group.totalOrders++;
-      group.totalRevenue += order.revenue;
-
-      if (order.isLate) {
-        group.lateOrders++;
-        if (typeof order.delayDays === 'number') {
-          group.delaySum += order.delayDays;
-          group.delayCount++;
+    
+    // Get all valid order results
+    const validOrders = analysisResults.orderResults.filter(order => {
+      return order && 
+             !order.isInvalid && 
+             order.optimizedScheduledDate && 
+             order.optimizedScheduledDate !== 'INVALID - PAST DATE' &&
+             order.optimizedScheduledDate !== 'TOO EARLY - VIOLATES CONSTRAINT' &&
+             typeof order.optimizedScheduledDate === 'string';
+    });
+    
+    for (const orderResult of validOrders) {
+      try {
+        const orderNumber = orderResult.orderNumber;
+        const assignment = solution[orderNumber];
+        
+        if (!assignment || !assignment.operationsAssignment) {
+          continue;
         }
-      }
-    }
-
-    return Object.values(priorityGroups).map(group => ({
-      customerPriority: group.customerPriority,
-      totalOrders: group.totalOrders,
-      lateOrders: group.lateOrders,
-      onTimeRate: ((group.totalOrders - group.lateOrders) / group.totalOrders * 100).toFixed(1),
-      avgDelayDays: group.delayCount > 0 ? (group.delaySum / group.delayCount).toFixed(1) : 0,
-      totalRevenue: group.totalRevenue.toFixed(2)
-    }));
-  }
-
-  createCapacityUtilizationData(analysisResults) {
-    const result = [];
-
-    for (const [line, weeklyUsage] of Object.entries(analysisResults.capacityUsage)) {
-      const maxUsage = Math.max(...Object.values(weeklyUsage));
-      const totalUsage = Object.values(weeklyUsage).reduce((sum, val) => sum + val, 0);
-
-      result.push({
-        lineRestriction: line,
-        maxWeeklyUsage: maxUsage,
-        totalUsage: totalUsage,
-        peakUtilization: 0 // Would need system reference to calculate
-      });
-    }
-
-    return result;
-  }
-
-  createWeeklyScheduleData(solution, analysisResults) {
-    const result = [];
-
-    for (const [orderNumber, assignment] of Object.entries(solution)) {
-      const orderResult = analysisResults.orderResults.find(r => r.orderNumber === orderNumber);
-      if (orderResult && !orderResult.isInvalid) {
+        
+        const scheduledDate = orderResult.optimizedScheduledDate;
+        
+        // Handle different date formats
+        let weekKey;
+        try {
+          const date = moment(scheduledDate);
+          if (date.isValid()) {
+            weekKey = `W${date.format('YYYY-WW')}`;
+          } else {
+            continue;
+          }
+        } catch (error) {
+          continue;
+        }
+        
+        // Process all operations for this order
         for (const [operationId, lineRestriction] of Object.entries(assignment.operationsAssignment)) {
-          result.push({
-            orderNumber: orderNumber,
-            productId: orderResult.productId,
-            scheduledDate: orderResult.optimizedScheduledDate,
-            operationId: operationId,
-            lineRestriction: lineRestriction,
-            quantity: orderResult.orderQty,
-            customerPriority: orderResult.customerPriority
-          });
+          if (lineRestriction && typeof lineRestriction === 'string') {
+            if (!pivotData[lineRestriction]) {
+              pivotData[lineRestriction] = {};
+            }
+            
+            if (!pivotData[lineRestriction][weekKey]) {
+              pivotData[lineRestriction][weekKey] = 0;
+            }
+            
+            const quantity = parseInt(orderResult.orderQty) || 0;
+            pivotData[lineRestriction][weekKey] += quantity;
+          }
         }
+      } catch (error) {
+        this.logger.warn(`Error processing order ${orderResult.orderNumber}:`, error.message);
       }
     }
-
-    return result;
+    
+    return pivotData;
   }
 
-  createComponentAnalysisData(analysisResults) {
-    const result = [];
-
-    for (const [component, weeklyUsage] of Object.entries(analysisResults.componentUsage)) {
-      const maxUsage = Math.max(...Object.values(weeklyUsage));
-      const totalUsage = Object.values(weeklyUsage).reduce((sum, val) => sum + val, 0);
-
-      result.push({
-        component: component,
-        maxWeeklyUsage: maxUsage,
-        totalUsage: totalUsage,
-        peakUtilization: 0 // Would need system reference to calculate
-      });
-    }
-
-    return result;
-  }
-
-  //New code added based on version 3 Ashok -24/06/2025
   async createCapacityPivotTable(analysisResults, solution, filePath) {
     const pivotData = this.generateCapacityPivotData(analysisResults, solution);
+    
+    if (Object.keys(pivotData).length === 0) {
+      this.logger.warn('No pivot data available, creating empty pivot table');
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Capacity_Pivot_Table');
+      worksheet.addRow(['Line_Restriction', 'Week', 'Scheduled_Quantity']);
+      await workbook.xlsx.writeFile(filePath);
+      return;
+    }
     
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Capacity_Pivot_Table');
@@ -511,41 +333,7 @@ class ExcelHandler {
     
     await workbook.xlsx.writeFile(filePath);
   }
-  
-  generateCapacityPivotData(analysisResults, solution) {
-    const pivotData = {};
-    
-    // Initialize all line restrictions
-    for (const orderResult of analysisResults.orderResults) {
-      if (orderResult.isInvalid) continue;
-      
-      const orderNumber = orderResult.orderNumber;
-      const assignment = solution[orderNumber];
-      
-      if (assignment && assignment.operationsAssignment) {
-        const scheduledDate = orderResult.optimizedScheduledDate;
-        
-        // Convert date to week format for grouping
-        const date = moment(scheduledDate);
-        const weekKey = `W${date.format('YYYY-WW')}`;
-        
-        for (const [operationId, lineRestriction] of Object.entries(assignment.operationsAssignment)) {
-          if (!pivotData[lineRestriction]) {
-            pivotData[lineRestriction] = {};
-          }
-          
-          if (!pivotData[lineRestriction][weekKey]) {
-            pivotData[lineRestriction][weekKey] = 0;
-          }
-          
-          pivotData[lineRestriction][weekKey] += orderResult.orderQty;
-        }
-      }
-    }
-    
-    return pivotData;
-  }
-  
+
   formatPivotTable(worksheet, columnCount, totalRowIndex) {
     // Header formatting
     const headerRow = worksheet.getRow(1);
@@ -558,21 +346,19 @@ class ExcelHandler {
     headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
     
     // Total row formatting
-    const totalRow = worksheet.getRow(totalRowIndex);
-    totalRow.font = { bold: true };
-    totalRow.fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: 'F2F2F2' }
-    };
-    
-    // Total column formatting
-    const totalColumn = worksheet.getColumn(columnCount);
-    totalColumn.font = { bold: true };
+    if (totalRowIndex) {
+      const totalRow = worksheet.getRow(totalRowIndex);
+      totalRow.font = { bold: true };
+      totalRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'F2F2F2' }
+      };
+    }
     
     // Add borders to all cells
-    worksheet.eachRow((row, rowNumber) => {
-      row.eachCell((cell, colNumber) => {
+    worksheet.eachRow((row) => {
+      row.eachCell((cell) => {
         cell.border = {
           top: { style: 'thin' },
           left: { style: 'thin' },
@@ -581,30 +367,206 @@ class ExcelHandler {
         };
         
         // Center align numbers
-        if (colNumber > 1) {
+        if (cell.col > 1) {
           cell.alignment = { horizontal: 'center' };
         }
       });
     });
+  }
+
+  createSummaryData(analysisResults) {
+    const results = analysisResults || {};
+    const orderResults = results.orderResults || [];
     
-    // Conditional formatting for high capacity usage (optional)
-    worksheet.addConditionalFormatting({
-      ref: `B2:${String.fromCharCode(65 + columnCount - 2)}${totalRowIndex - 1}`,
-      rules: [
-        {
-          type: 'cellIs',
-          operator: 'greaterThan',
-          formulae: [10],
-          style: {
-            fill: {
-              type: 'pattern',
-              pattern: 'solid',
-              bgColor: { argb: 'FFE6E6' }
-            }
+    return [
+      { Metric: 'Planning Start Date', Value: results.planningStartDate || 'Not Set' },
+      { Metric: 'Min Early Delivery Days', Value: results.minEarlyDeliveryDays || 0 },
+      { Metric: 'Total Orders', Value: orderResults.length },
+      { Metric: 'Valid Assignments', Value: results.totalValidOrders || 0 },
+      { Metric: 'Invalid Assignments (Past)', Value: results.invalidAssignments || 0 },
+      { Metric: 'Too Early Assignments', Value: results.ordersTooEarly || 0 },
+      { Metric: 'Orders On Time', Value: results.ordersOnTime || 0 },
+      { Metric: 'Orders Early (Within Window)', Value: results.ordersEarly || 0 },
+      { Metric: 'Orders Late', Value: results.ordersLate || 0 },
+      { Metric: 'On-Time Percentage (%)', Value: (results.onTimePercentage || 0).toFixed(1) },
+      { Metric: 'Total Penalty Cost ($)', Value: (results.totalPenalty || 0).toFixed(2) }
+    ];
+  }
+
+  createPriorityAnalysisData(analysisResults) {
+    const orderResults = analysisResults.orderResults || [];
+    const validOrders = orderResults.filter(order => 
+      order && !order.isInvalid && order.customerPriority && typeof order.delayDays === 'number'
+    );
+    
+    if (validOrders.length === 0) {
+      return [];
+    }
+    
+    // Get all unique priorities dynamically
+    const priorities = [...new Set(validOrders.map(order => order.customerPriority))];
+    const priorityGroups = {};
+
+    // Initialize all priorities
+    priorities.forEach(priority => {
+      priorityGroups[priority] = {
+        customerPriority: priority,
+        totalOrders: 0,
+        lateOrders: 0,
+        totalRevenue: 0,
+        delaySum: 0,
+        delayCount: 0
+      };
+    });
+
+    // Process orders
+    for (const order of validOrders) {
+      const priority = order.customerPriority;
+      const group = priorityGroups[priority];
+      
+      if (group) {
+        group.totalOrders++;
+        group.totalRevenue += parseFloat(order.revenue) || 0;
+
+        if (order.isLate) {
+          group.lateOrders++;
+          if (typeof order.delayDays === 'number') {
+            group.delaySum += order.delayDays;
+            group.delayCount++;
           }
         }
-      ]
-    });
+      }
+    }
+
+    return Object.values(priorityGroups).map(group => ({
+      customerPriority: group.customerPriority,
+      totalOrders: group.totalOrders,
+      lateOrders: group.lateOrders,
+      onTimeRate: group.totalOrders > 0 ? ((group.totalOrders - group.lateOrders) / group.totalOrders * 100).toFixed(1) : "0.0",
+      avgDelayDays: group.delayCount > 0 ? (group.delaySum / group.delayCount).toFixed(1) : "0.0",
+      totalRevenue: group.totalRevenue.toFixed(2)
+    }));
+  }
+
+  createCapacityUtilizationData(analysisResults) {
+    const result = [];
+    const capacityUsage = analysisResults.capacityUsage || {};
+    
+    for (const [line, weeklyUsage] of Object.entries(capacityUsage)) {
+      if (weeklyUsage && typeof weeklyUsage === 'object') {
+        const usageValues = Object.values(weeklyUsage).filter(val => typeof val === 'number' && val >= 0);
+        
+        if (usageValues.length > 0) {
+          const maxUsage = Math.max(...usageValues);
+          const totalUsage = usageValues.reduce((sum, val) => sum + val, 0);
+          
+          result.push({
+            lineRestriction: line,
+            maxWeeklyUsage: maxUsage,
+            totalUsage: totalUsage,
+            averageUsage: usageValues.length > 0 ? (totalUsage / usageValues.length).toFixed(1) : 0,
+            peakUtilization: 0  // Will be calculated if system reference available
+          });
+        }
+      }
+    }
+    
+    return result;
+  }
+
+  createWeeklyScheduleData(solution, analysisResults) {
+    const result = [];
+    const orderResults = analysisResults.orderResults || [];
+    
+    for (const [orderNumber, assignment] of Object.entries(solution || {})) {
+      const orderResult = orderResults.find(r => r.orderNumber === orderNumber);
+      if (orderResult && !orderResult.isInvalid && assignment && assignment.operationsAssignment) {
+        for (const [operationId, lineRestriction] of Object.entries(assignment.operationsAssignment)) {
+          result.push({
+            orderNumber: orderNumber,
+            productId: orderResult.productId || 'Unknown',
+            scheduledDate: orderResult.optimizedScheduledDate || 'Unknown',
+            operationId: operationId,
+            lineRestriction: lineRestriction,
+            quantity: orderResult.orderQty || 0,
+            customerPriority: orderResult.customerPriority || 'Unknown'
+          });
+        }
+      }
+    }
+    
+    return result;
+  }
+
+  createComponentAnalysisData(analysisResults) {
+    const result = [];
+    const componentUsage = analysisResults.componentUsage || {};
+    
+    for (const [component, weeklyUsage] of Object.entries(componentUsage)) {
+      if (weeklyUsage && typeof weeklyUsage === 'object') {
+        const usageValues = Object.values(weeklyUsage).filter(val => typeof val === 'number' && val >= 0);
+        
+        if (usageValues.length > 0) {
+          const maxUsage = Math.max(...usageValues);
+          const totalUsage = usageValues.reduce((sum, val) => sum + val, 0);
+          
+          result.push({
+            component: component,
+            maxWeeklyUsage: maxUsage,
+            totalUsage: totalUsage,
+            peakUtilization: 0
+          });
+        }
+      }
+    }
+    
+    return result;
+  }
+
+  formatHeader(header) {
+    return header.replace(/([A-Z])/g, ' $1')
+                 .replace(/^./, str => str.toUpperCase())
+                 .replace(/_/g, ' ');
+  }
+
+  getColumnWidth(header) {
+    const widths = {
+      orderNumber: 15,
+      productId: 12,
+      customerPriority: 15,
+      originalPromiseDate: 18,
+      optimizedScheduledDate: 20,
+      delayDays: 12,
+      revenue: 15,
+      default: 12
+    };
+
+    return widths[header] || widths.default;
+  }
+
+  formatWorksheetColumns(worksheet, sheetName) {
+    if (sheetName === 'Order_Results') {
+      // Format currency columns
+      try {
+        const revenueColumn = worksheet.getColumn('revenue');
+        if (revenueColumn) {
+          revenueColumn.numFmt = '$#,##0.00';
+        }
+      } catch (error) {
+        // Column might not exist
+      }
+    }
+  }
+
+  async writeSimpleExcel(filePath, data) {
+    const workbook = XLSX.utils.book_new();
+
+    for (const [sheetName, sheetData] of Object.entries(data)) {
+      const worksheet = XLSX.utils.json_to_sheet(sheetData || []);
+      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+    }
+
+    XLSX.writeFile(workbook, filePath);
   }
 }
 
