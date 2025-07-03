@@ -158,6 +158,20 @@ class ExcelHandler {
     await workbook.xlsx.writeFile(filePath);
   }
 
+  async createSampleDataFile(planningSystem, filePath) {
+    const data = {
+      Products: this.convertMapToArray(planningSystem.products),
+      Line_Restrictions: this.convertLineRestrictionsToArray(planningSystem.lineRestrictions),
+      Operations: this.convertOperationsToArray(planningSystem.operations),
+      Sales_Orders: this.convertSalesOrdersToArray(planningSystem.salesOrders),
+      Penalty_Rules: this.convertMapToArray(planningSystem.penaltyRules),
+      Priority_Delivery_Criteria: this.convertMapToArray(planningSystem.priorityDeliveryCriteria), // New line added 23/06/2025
+      Component_Availability: this.convertComponentAvailabilityToArray(planningSystem.componentAvailability),
+      Weekly_Capacity: this.convertWeeklyCapacityToArray(planningSystem.lineRestrictions, planningSystem.weeks)
+    };
+
+    await this.writeExcelFile(filePath, data, true);
+  }
   async createResultsFile(analysisResults, solution, fitnessHistory, filePath) {
     const data = {
       Summary: this.createSummaryData(analysisResults),
@@ -267,6 +281,7 @@ class ExcelHandler {
 
   async createCapacityPivotTable(analysisResults, solution, filePath) {
     const pivotData = this.generateCapacityPivotData(analysisResults, solution);
+    
     
     if (Object.keys(pivotData).length === 0) {
       this.logger.warn('No pivot data available, creating empty pivot table');
@@ -567,6 +582,131 @@ class ExcelHandler {
     }
 
     XLSX.writeFile(workbook, filePath);
+  }
+  convertMapToArray(map) {
+    return Array.from(map.values());
+  }
+
+  convertLineRestrictionsToArray(lineRestrictions) {
+    return Array.from(lineRestrictions.values()).map(lr => ({
+      restrictionName: lr.restrictionName,
+      validity: lr.validity,
+      penaltyCost: lr.penaltyCost,
+      avgWeeklyCapacity: this.calculateAverageCapacity(lr.weeklyCapacity)
+    }));
+  }
+
+  convertOperationsToArray(operations) {
+    return Array.from(operations.values()).map(op => ({
+      operationId: op.operationId,
+      primaryLineRestriction: op.primaryLineRestriction,
+      alternateLineRestrictions: op.alternateLineRestrictions.join(', ')
+    }));
+  }
+
+  convertSalesOrdersToArray(salesOrders) {
+    return Array.from(salesOrders.values()).map(so => ({
+      orderNumber: so.orderNumber,
+      productId: so.productId,
+      orderPromiseDate: moment(so.orderPromiseDate).format('YYYY-MM-DD'),
+      orderQty: so.orderQty,
+      revenue: so.revenue,
+      cost: so.cost,
+      customerPriority: so.customerPriority,
+      operations: so.operations.join(', '),
+      componentsRequired: this.formatComponents(so.components)
+    }));
+  }
+
+  convertComponentAvailabilityToArrayDaily(componentAvailability) {
+    const result = [];
+    for (const [componentId, availability] of componentAvailability) {
+      for (const [week, quantity] of Object.entries(availability.dailyAvailability)) {
+        result.push({
+          componentId: componentId,
+          week: week,
+          availableQuantity: quantity
+        });
+      }
+    }
+    return result;
+  }
+
+  convertComponentAvailabilityToArray(componentAvailability) {
+    const result = [];
+    for (const [componentId, availability] of componentAvailability) {
+      for (const [week, quantity] of Object.entries(availability.weeklyAvailability)) {
+        result.push({
+          componentId: componentId,
+          week: week,
+          availableQuantity: quantity
+        });
+      }
+    }
+    return result;
+  }
+
+  convertWeeklyCapacityToArray(lineRestrictions, weeks) {
+    const result = [];
+    for (const [restrictionName, restriction] of lineRestrictions) {
+      for (const week of weeks.slice(0, 12)) { // First 12 weeks
+        result.push({
+          restrictionName: restrictionName,
+          week: week,
+          capacity: restriction.weeklyCapacity[week] || 0
+        });
+      }
+    }
+    return result;
+  }
+
+  calculateAverageCapacity(weeklyCapacity) {
+    const values = Object.values(weeklyCapacity);
+    return values.length > 0 ? values.reduce((sum, val) => sum + val, 0) / values.length : 0;
+  }
+
+  formatComponents(components) {
+    return Object.entries(components)
+      .filter(([_, qty]) => qty > 0)
+      .map(([comp, qty]) => `${comp}:${qty}`)
+      .join(', ');
+  }
+
+  async createSampleDataFileDaily(planningSystem, filePath) {
+    const data = {
+      Products: this.convertMapToArray(planningSystem.products),
+      Line_Restrictions: this.convertLineRestrictionsToArrayDaily(planningSystem.lineRestrictions),
+      Operations: this.convertOperationsToArray(planningSystem.operations),
+      Sales_Orders: this.convertSalesOrdersToArray(planningSystem.salesOrders),
+      Penalty_Rules: this.convertMapToArray(planningSystem.penaltyRules),
+      Priority_Delivery_Criteria: this.convertMapToArray(planningSystem.priorityDeliveryCriteria), // New line added 23/06/2025
+      Component_Availability: this.convertComponentAvailabilityToArrayDaily(planningSystem.componentAvailability),
+      Weekly_Capacity: this.convertDailyCapacityToArray(planningSystem.lineRestrictions, planningSystem.dailyBuckets)
+    };
+
+    await this.writeExcelFile(filePath, data, true);
+  }
+
+  convertLineRestrictionsToArrayDaily(lineRestrictions) {
+    return Array.from(lineRestrictions.values()).map(lr => ({
+      restrictionName: lr.restrictionName,
+      validity: lr.validity,
+      penaltyCost: lr.penaltyCost,
+      avgWeeklyCapacity: this.calculateAverageCapacity(lr.dailyCapacity)
+    }));
+  }
+  convertDailyCapacityToArray(lineRestrictions, weeks) {
+    const result = [];
+    for (const [restrictionName, restriction] of lineRestrictions) {
+      for (const week of weeks) { 
+        result.push({
+          restrictionName: restrictionName,
+          week: week.date,
+          capacity: restriction.dailyCapacity[week.date] || 0
+        });
+      }
+    }
+    return result;
   }
 }
 
