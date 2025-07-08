@@ -234,7 +234,7 @@ router.post('/optimize/stop', (req, res) => {
 
 
 // Helper methods
-router.createPlanningSystemFromExcel = async function(data, planningStartDate, minEarlyDeliveryDays) {
+router.createPlanningSystemFromExcel = async function (data, planningStartDate, minEarlyDeliveryDays) {
   const planningSystem = new OrderPlanningSystem(planningStartDate, minEarlyDeliveryDays);
 
   try {
@@ -243,9 +243,9 @@ router.createPlanningSystemFromExcel = async function(data, planningStartDate, m
       data.Products.forEach((product, index) => {
         try {
           const productData = {
-            productId: product.Product_ID || product.productId ||product["Product Id"]|| `PRODUCT_${index}`,
-            productName: product.Product_Name || product.productName ||product["Product Name"]|| `Product ${index}`,
-            productDescription: product.Product_Description || product.productDescription ||product["Product Description"]|| `Description ${index}`
+            productId: product.Product_ID || product.productId || product["Product Id"] || `PRODUCT_${index}`,
+            productName: product.Product_Name || product.productName || product["Product Name"] || `Product ${index}`,
+            productDescription: product.Product_Description || product.productDescription || product["Product Description"] || `Description ${index}`
           };
           planningSystem.addProduct(productData);
         } catch (error) {
@@ -261,10 +261,10 @@ router.createPlanningSystemFromExcel = async function(data, planningStartDate, m
       if (data.Weekly_Capacity && Array.isArray(data.Weekly_Capacity)) {
         data.Weekly_Capacity.forEach((capacity) => {
           try {
-            const restrictionName = capacity.Restriction_Name || capacity.restrictionName ||capacity["Restriction Name"];
+            const restrictionName = capacity.Restriction_Name || capacity.restrictionName || capacity["Restriction Name"];
             const week = capacity.Week || capacity.week;
             const capacityValue = parseInt(capacity.Capacity || capacity.capacity) || 0;
-            
+
             if (restrictionName && week) {
               if (!capacityMap[restrictionName]) {
                 capacityMap[restrictionName] = {};
@@ -280,16 +280,16 @@ router.createPlanningSystemFromExcel = async function(data, planningStartDate, m
       // Create line restrictions
       data.Line_Restrictions.forEach((restriction, index) => {
         try {
-          const name = restriction.Restriction_Name || restriction.restrictionName || restriction["Restriction Name"]||`RESTRICTION_${index}`;
-          const validity = restriction.Validity !== undefined ? restriction.Validity : 
-                          restriction.validity !== undefined ? restriction.validity : true;
-          const penaltyCost = parseFloat(restriction.Penalty_Cost || restriction.penaltyCost) ||restriction["Penalty Cost"]|| 500;
-          
+          const name = restriction.Restriction_Name || restriction.restrictionName || restriction["Restriction Name"] || `RESTRICTION_${index}`;
+          const validity = restriction.Validity !== undefined ? restriction.Validity :
+            restriction.validity !== undefined ? restriction.validity : true;
+          const penaltyCost = parseFloat(restriction.Penalty_Cost || restriction.penaltyCost) || restriction["Penalty Cost"] || 500;
+
           let weeklyCapacity = capacityMap[name] || {};
-          
+
           // If no weekly capacity data, create default
           if (Object.keys(weeklyCapacity).length === 0) {
-            const defaultCapacity = parseInt(restriction.Avg_Weekly_Capacity || restriction.avgWeeklyCapacity ||restriction["Avg Weekly Capacity"]) || 10;
+            const defaultCapacity = parseInt(restriction.Avg_Weekly_Capacity || restriction.avgWeeklyCapacity || restriction["Avg Weekly Capacity"]) || 10;
             planningSystem.weeks.forEach(week => {
               weeklyCapacity[week] = defaultCapacity;
             });
@@ -313,14 +313,14 @@ router.createPlanningSystemFromExcel = async function(data, planningStartDate, m
     if (data.Operations && Array.isArray(data.Operations)) {
       data.Operations.forEach((operation, index) => {
         try {
-          const alternatesStr = operation.Alternate_Line_Restrictions || operation.alternateLineRestrictions ||operation["Alternate Line Restrictions"]|| '';
-          const alternates = alternatesStr ? 
-            alternatesStr.split(',').map(s => s.trim()).filter(s => s && s !== 'nan' && s !== 'null') : 
+          const alternatesStr = operation.Alternate_Line_Restrictions || operation.alternateLineRestrictions || operation["Alternate Line Restrictions"] || '';
+          const alternates = alternatesStr ?
+            alternatesStr.split(',').map(s => s.trim()).filter(s => s && s !== 'nan' && s !== 'null') :
             [];
-          
+
           planningSystem.addOperation({
-            operationId: operation.Operation_ID || operation.operationId ||operation["Operation Id"]|| `OP_${index}`,
-            primaryLineRestriction: operation.Primary_Line_Restriction || operation.primaryLineRestriction ||operation["Primary Line Restriction"]|| 'DEFAULT_LINE',
+            operationId: operation.Operation_ID || operation.operationId || operation["Operation Id"] || `OP_${index}`,
+            primaryLineRestriction: operation.Primary_Line_Restriction || operation.primaryLineRestriction || operation["Primary Line Restriction"] || 'DEFAULT_LINE',
             alternateLineRestrictions: alternates
           });
         } catch (error) {
@@ -335,7 +335,7 @@ router.createPlanningSystemFromExcel = async function(data, planningStartDate, m
         try {
           // Parse components
           const components = {};
-          const componentsStr = order.Components_Required || order.componentsRequired ||order["Components Required"] || '';
+          const componentsStr = order.Components_Required || order.componentsRequired || order["Components Required"] || '';
           if (componentsStr) {
             componentsStr.split(',').forEach(comp => {
               const parts = comp.split(':');
@@ -351,14 +351,14 @@ router.createPlanningSystemFromExcel = async function(data, planningStartDate, m
 
           // Parse operations
           const operationsStr = order.Operations || order.operations || '';
-          const operations = operationsStr ? 
-            operationsStr.split(',').map(op => op.trim()).filter(op => op) : 
+          const operations = operationsStr ?
+            operationsStr.split(',').map(op => op.trim()).filter(op => op) :
             ['DEFAULT_OP'];
 
           // Parse date
           let promiseDate;
           try {
-            promiseDate = moment(order.Order_Promise_Date || order.orderPromiseDate||order["Order Promise Date"]).toDate();
+            promiseDate = moment(order.Order_Promise_Date || order.orderPromiseDate || order["Order Promise Date"]).toDate();
             if (!moment(promiseDate).isValid()) {
               promiseDate = moment().add(7, 'days').toDate(); // Default to 1 week from now
             }
@@ -367,13 +367,13 @@ router.createPlanningSystemFromExcel = async function(data, planningStartDate, m
           }
 
           planningSystem.addSalesOrder({
-            orderNumber: order.Order_Number || order.orderNumber ||order["Order Number"] || `SO_${index}`,
-            productId: order.Product_ID || order.productId ||order["Product Id"] || 'DEFAULT_PRODUCT',
+            orderNumber: order.Order_Number || order.orderNumber || order["Order Number"] || `SO_${index}`,
+            productId: order.Product_ID || order.productId || order["Product Id"] || 'DEFAULT_PRODUCT',
             orderPromiseDate: promiseDate,
-            orderQty: parseInt(order.Order_Qty || order.orderQty||order["Order Qty"]) || 1,
+            orderQty: parseInt(order.Order_Qty || order.orderQty || order["Order Qty"]) || 1,
             revenue: parseFloat(order.Revenue || order.revenue) || 1000,
             cost: parseFloat(order.Cost || order.cost) || 800,
-            customerPriority: order.Customer_Priority || order.customerPriority ||order["Customer Priority"]|| 'Medium',
+            customerPriority: order.Customer_Priority || order.customerPriority || order["Customer Priority"] || 'Medium',
             operations: operations,
             components: components
           });
@@ -388,10 +388,10 @@ router.createPlanningSystemFromExcel = async function(data, planningStartDate, m
       data.Penalty_Rules.forEach((rule, index) => {
         try {
           planningSystem.addPenaltyRule({
-            customerPriority: rule.Customer_Priority || rule.customerPriority ||rule["Customer Priority"]|| 'Medium',
-            productId: rule.Product_ID || rule.productId ||rule["Product Id"]|| 'DEFAULT_PRODUCT',
-            lateDeliveryPenalty: parseFloat(rule.Late_Delivery_Penalty || rule.lateDeliveryPenalty||rule["Late Delivery Penalty"]) || 100,
-            noFulfillmentPenalty: parseFloat(rule.No_Fulfillment_Penalty || rule.noFulfillmentPenalty||rule["No Fulfillment Penalty"]) || 1000
+            customerPriority: rule.Customer_Priority || rule.customerPriority || rule["Customer Priority"] || 'Medium',
+            productId: rule.Product_ID || rule.productId || rule["Product Id"] || 'DEFAULT_PRODUCT',
+            lateDeliveryPenalty: parseFloat(rule.Late_Delivery_Penalty || rule.lateDeliveryPenalty || rule["Late Delivery Penalty"]) || 100,
+            noFulfillmentPenalty: parseFloat(rule.No_Fulfillment_Penalty || rule.noFulfillmentPenalty || rule["No Fulfillment Penalty"]) || 1000
           });
         } catch (error) {
           console.error(`Error loading penalty rule ${index}:`, error);
@@ -404,10 +404,10 @@ router.createPlanningSystemFromExcel = async function(data, planningStartDate, m
       data.Priority_Delivery_Criteria.forEach((criteria, index) => {
         try {
           planningSystem.addPriorityDeliveryCriteria({
-            customerPriority: criteria.Customer_Priority || criteria.customerPriority ||criteria["Customer Priority"]|| 'Medium',
-            maxDelayDays: parseInt(criteria.Max_Delay_Days || criteria.maxDelayDays || criteria["Max Delay Days"])||7,
-            penaltyMultiplier: parseFloat(criteria.Penalty_Multiplier || criteria.penaltyMultiplier||criteria["Penalty Multiplier"]) || 2.0,
-            description: criteria.Description || criteria.description ||criteria["Description"]|| 'Loaded from Excel'
+            customerPriority: criteria.Customer_Priority || criteria.customerPriority || criteria["Customer Priority"] || 'Medium',
+            maxDelayDays: parseInt(criteria.Max_Delay_Days || criteria.maxDelayDays || criteria["Max Delay Days"]) || 7,
+            penaltyMultiplier: parseFloat(criteria.Penalty_Multiplier || criteria.penaltyMultiplier || criteria["Penalty Multiplier"]) || 2.0,
+            description: criteria.Description || criteria.description || criteria["Description"] || 'Loaded from Excel'
           });
         } catch (error) {
           console.error(`Error loading priority criteria ${index}:`, error);
@@ -418,13 +418,13 @@ router.createPlanningSystemFromExcel = async function(data, planningStartDate, m
     // Load component availability
     if (data.Component_Availability && Array.isArray(data.Component_Availability)) {
       const componentMap = {};
-      
+
       data.Component_Availability.forEach((comp) => {
         try {
-          const componentId = comp.Component_ID || comp.componentId||comp["Component Id"];
+          const componentId = comp.Component_ID || comp.componentId || comp["Component Id"];
           const week = comp.Week || comp.week;
-          const quantity = parseInt(comp.Available_Quantity || comp.availableQuantity||comp["Available Quantity"]) || 0;
-          
+          const quantity = parseInt(comp.Available_Quantity || comp.availableQuantity || comp["Available Quantity"]) || 0;
+
           if (componentId && week) {
             if (!componentMap[componentId]) {
               componentMap[componentId] = {};
@@ -664,7 +664,7 @@ router.post('/uploadDaily', upload.single('file'), async (req, res) => {
   }
 });
 
-router.createPlanningSystemFromExcelDaily = async function(data, planningStartDate, minEarlyDeliveryDays) {
+router.createPlanningSystemFromExcelDaily = async function (data, planningStartDate, minEarlyDeliveryDays) {
   const planningSystem = new OrderPlanningSystemDaily(planningStartDate, minEarlyDeliveryDays);
 
   try {
@@ -673,9 +673,9 @@ router.createPlanningSystemFromExcelDaily = async function(data, planningStartDa
       data.Products.forEach((product, index) => {
         try {
           const productData = {
-            productId: product.Product_ID || product.productId ||product["Product Id"]|| `PRODUCT_${index}`,
-            productName: product.Product_Name || product.productName ||product["Product Name"]|| `Product ${index}`,
-            productDescription: product.Product_Description || product.productDescription ||product["Product Description"]|| `Description ${index}`
+            productId: product.Product_ID || product.productId || product["Product Id"] || `PRODUCT_${index}`,
+            productName: product.Product_Name || product.productName || product["Product Name"] || `Product ${index}`,
+            productDescription: product.Product_Description || product.productDescription || product["Product Description"] || `Description ${index}`
           };
           planningSystem.addProduct(productData);
         } catch (error) {
@@ -691,10 +691,10 @@ router.createPlanningSystemFromExcelDaily = async function(data, planningStartDa
       if (data.Weekly_Capacity && Array.isArray(data.Weekly_Capacity)) {
         data.Weekly_Capacity.forEach((capacity) => {
           try {
-            const restrictionName = capacity.Restriction_Name || capacity.restrictionName ||capacity["Restriction Name"];
+            const restrictionName = capacity.Restriction_Name || capacity.restrictionName || capacity["Restriction Name"];
             const week = capacity.Week || capacity.week;
             const capacityValue = parseInt(capacity.Capacity || capacity.capacity) || 0;
-            
+
             if (restrictionName && week) {
               if (!capacityMap[restrictionName]) {
                 capacityMap[restrictionName] = {};
@@ -710,16 +710,16 @@ router.createPlanningSystemFromExcelDaily = async function(data, planningStartDa
       // Create line restrictions
       data.Line_Restrictions.forEach((restriction, index) => {
         try {
-          const name = restriction.Restriction_Name || restriction.restrictionName || restriction["Restriction Name"]||`RESTRICTION_${index}`;
-          const validity = restriction.Validity !== undefined ? restriction.Validity : 
-                          restriction.validity !== undefined ? restriction.validity : true;
-          const penaltyCost = parseFloat(restriction.Penalty_Cost || restriction.penaltyCost) ||restriction["Penalty Cost"]|| 500;
-          
+          const name = restriction.Restriction_Name || restriction.restrictionName || restriction["Restriction Name"] || `RESTRICTION_${index}`;
+          const validity = restriction.Validity !== undefined ? restriction.Validity :
+            restriction.validity !== undefined ? restriction.validity : true;
+          const penaltyCost = parseFloat(restriction.Penalty_Cost || restriction.penaltyCost) || restriction["Penalty Cost"] || 500;
+
           let weeklyCapacity = capacityMap[name] || {};
-          
+
           // If no weekly capacity data, create default
           if (Object.keys(weeklyCapacity).length === 0) {
-            const defaultCapacity = parseInt(restriction.Avg_Weekly_Capacity || restriction.avgWeeklyCapacity ||restriction["Avg Weekly Capacity"]) || 10;
+            const defaultCapacity = parseInt(restriction.Avg_Weekly_Capacity || restriction.avgWeeklyCapacity || restriction["Avg Weekly Capacity"]) || 10;
             planningSystem.weeks.forEach(week => {
               weeklyCapacity[week] = defaultCapacity;
             });
@@ -743,14 +743,14 @@ router.createPlanningSystemFromExcelDaily = async function(data, planningStartDa
     if (data.Operations && Array.isArray(data.Operations)) {
       data.Operations.forEach((operation, index) => {
         try {
-          const alternatesStr = operation.Alternate_Line_Restrictions || operation.alternateLineRestrictions ||operation["Alternate Line Restrictions"]|| '';
-          const alternates = alternatesStr ? 
-            alternatesStr.split(',').map(s => s.trim()).filter(s => s && s !== 'nan' && s !== 'null') : 
+          const alternatesStr = operation.Alternate_Line_Restrictions || operation.alternateLineRestrictions || operation["Alternate Line Restrictions"] || '';
+          const alternates = alternatesStr ?
+            alternatesStr.split(',').map(s => s.trim()).filter(s => s && s !== 'nan' && s !== 'null') :
             [];
-          
+
           planningSystem.addOperation({
-            operationId: operation.Operation_ID || operation.operationId ||operation["Operation Id"]|| `OP_${index}`,
-            primaryLineRestriction: operation.Primary_Line_Restriction || operation.primaryLineRestriction ||operation["Primary Line Restriction"]|| 'DEFAULT_LINE',
+            operationId: operation.Operation_ID || operation.operationId || operation["Operation Id"] || `OP_${index}`,
+            primaryLineRestriction: operation.Primary_Line_Restriction || operation.primaryLineRestriction || operation["Primary Line Restriction"] || 'DEFAULT_LINE',
             alternateLineRestrictions: alternates
           });
         } catch (error) {
@@ -765,7 +765,7 @@ router.createPlanningSystemFromExcelDaily = async function(data, planningStartDa
         try {
           // Parse components
           const components = {};
-          const componentsStr = order.Components_Required || order.componentsRequired ||order["Components Required"] || '';
+          const componentsStr = order.Components_Required || order.componentsRequired || order["Components Required"] || '';
           if (componentsStr) {
             componentsStr.split(',').forEach(comp => {
               const parts = comp.split(':');
@@ -781,14 +781,14 @@ router.createPlanningSystemFromExcelDaily = async function(data, planningStartDa
 
           // Parse operations
           const operationsStr = order.Operations || order.operations || '';
-          const operations = operationsStr ? 
-            operationsStr.split(',').map(op => op.trim()).filter(op => op) : 
+          const operations = operationsStr ?
+            operationsStr.split(',').map(op => op.trim()).filter(op => op) :
             ['DEFAULT_OP'];
 
           // Parse date
           let promiseDate;
           try {
-            promiseDate = moment(order.Order_Promise_Date || order.orderPromiseDate||order["Order Promise Date"]).toDate();
+            promiseDate = moment(order.Order_Promise_Date || order.orderPromiseDate || order["Order Promise Date"]).toDate();
             if (!moment(promiseDate).isValid()) {
               promiseDate = moment().add(7, 'days').toDate(); // Default to 1 week from now
             }
@@ -797,13 +797,13 @@ router.createPlanningSystemFromExcelDaily = async function(data, planningStartDa
           }
 
           planningSystem.addSalesOrder({
-            orderNumber: order.Order_Number || order.orderNumber ||order["Order Number"] || `SO_${index}`,
-            productId: order.Product_ID || order.productId ||order["Product Id"] || 'DEFAULT_PRODUCT',
+            orderNumber: order.Order_Number || order.orderNumber || order["Order Number"] || `SO_${index}`,
+            productId: order.Product_ID || order.productId || order["Product Id"] || 'DEFAULT_PRODUCT',
             orderPromiseDate: promiseDate,
-            orderQty: parseInt(order.Order_Qty || order.orderQty||order["Order Qty"]) || 1,
+            orderQty: parseInt(order.Order_Qty || order.orderQty || order["Order Qty"]) || 1,
             revenue: parseFloat(order.Revenue || order.revenue) || 1000,
             cost: parseFloat(order.Cost || order.cost) || 800,
-            customerPriority: order.Customer_Priority || order.customerPriority ||order["Customer Priority"]|| 'Medium',
+            customerPriority: order.Customer_Priority || order.customerPriority || order["Customer Priority"] || 'Medium',
             operations: operations,
             components: components
           });
@@ -818,10 +818,10 @@ router.createPlanningSystemFromExcelDaily = async function(data, planningStartDa
       data.Penalty_Rules.forEach((rule, index) => {
         try {
           planningSystem.addPenaltyRule({
-            customerPriority: rule.Customer_Priority || rule.customerPriority ||rule["Customer Priority"]|| 'Medium',
-            productId: rule.Product_ID || rule.productId ||rule["Product Id"]|| 'DEFAULT_PRODUCT',
-            lateDeliveryPenalty: parseFloat(rule.Late_Delivery_Penalty || rule.lateDeliveryPenalty||rule["Late Delivery Penalty"]) || 100,
-            noFulfillmentPenalty: parseFloat(rule.No_Fulfillment_Penalty || rule.noFulfillmentPenalty||rule["No Fulfillment Penalty"]) || 1000
+            customerPriority: rule.Customer_Priority || rule.customerPriority || rule["Customer Priority"] || 'Medium',
+            productId: rule.Product_ID || rule.productId || rule["Product Id"] || 'DEFAULT_PRODUCT',
+            lateDeliveryPenalty: parseFloat(rule.Late_Delivery_Penalty || rule.lateDeliveryPenalty || rule["Late Delivery Penalty"]) || 100,
+            noFulfillmentPenalty: parseFloat(rule.No_Fulfillment_Penalty || rule.noFulfillmentPenalty || rule["No Fulfillment Penalty"]) || 1000
           });
         } catch (error) {
           console.error(`Error loading penalty rule ${index}:`, error);
@@ -834,10 +834,10 @@ router.createPlanningSystemFromExcelDaily = async function(data, planningStartDa
       data.Priority_Delivery_Criteria.forEach((criteria, index) => {
         try {
           planningSystem.addPriorityDeliveryCriteria({
-            customerPriority: criteria.Customer_Priority || criteria.customerPriority ||criteria["Customer Priority"]|| 'Medium',
-            maxDelayDays: parseInt(criteria.Max_Delay_Days || criteria.maxDelayDays || criteria["Max Delay Days"])||7,
-            penaltyMultiplier: parseFloat(criteria.Penalty_Multiplier || criteria.penaltyMultiplier||criteria["Penalty Multiplier"]) || 2.0,
-            description: criteria.Description || criteria.description ||criteria["Description"]|| 'Loaded from Excel'
+            customerPriority: criteria.Customer_Priority || criteria.customerPriority || criteria["Customer Priority"] || 'Medium',
+            maxDelayDays: parseInt(criteria.Max_Delay_Days || criteria.maxDelayDays || criteria["Max Delay Days"]) || 7,
+            penaltyMultiplier: parseFloat(criteria.Penalty_Multiplier || criteria.penaltyMultiplier || criteria["Penalty Multiplier"]) || 2.0,
+            description: criteria.Description || criteria.description || criteria["Description"] || 'Loaded from Excel'
           });
         } catch (error) {
           console.error(`Error loading priority criteria ${index}:`, error);
@@ -848,13 +848,13 @@ router.createPlanningSystemFromExcelDaily = async function(data, planningStartDa
     // Load component availability
     if (data.Component_Availability && Array.isArray(data.Component_Availability)) {
       const componentMap = {};
-      
+
       data.Component_Availability.forEach((comp) => {
         try {
-          const componentId = comp.Component_ID || comp.componentId||comp["Component Id"];
+          const componentId = comp.Component_ID || comp.componentId || comp["Component Id"];
           const week = comp.Week || comp.week;
-          const quantity = parseInt(comp.Available_Quantity || comp.availableQuantity||comp["Available Quantity"]) || 0;
-          
+          const quantity = parseInt(comp.Available_Quantity || comp.availableQuantity || comp["Available Quantity"]) || 0;
+
           if (componentId && week) {
             if (!componentMap[componentId]) {
               componentMap[componentId] = {};
