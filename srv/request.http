@@ -1,12 +1,12 @@
 ### Upload Excel File
-POST http://localhost:3030/api/planning/uploadDaily
+POST http://localhost:3030/api/planning/upload
 Content-Type: multipart/form-data; boundary=----BOUNDARY
 
 ------BOUNDARY
 Content-Disposition: form-data; name="file"; filename="sample_data_daily.xlsx"
 Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
 
-< ./public/sample_data_daily.xlsx
+< ./public/sample_data.xlsx
 ------BOUNDARY--
 
 ###
@@ -14,7 +14,7 @@ POST http://localhost:3030/api/planning/generate-sample
 Content-Type: application/json
 
 {
-	  "planningStartDate": "2025-05-29",
+	  "planningStartDate": "2025-07-24",
       "minEarlyDeliveryDays": 7
 
 }
@@ -24,953 +24,1831 @@ Content-Type: application/json
 POST http://localhost:3030/api/planning/optimize
 Content-Type: application/json
 
-{     
-     "planningSystem":{
-    "planningStartDate": "2025-06-25T12:16:47.930Z",
-    "minEarlyDeliveryDays": 7,
-    "products": {
-        "FG1": {
-            "productId": "FG1",
-            "productName": "EV Forklift 2T",
-            "productDescription": "2-ton electric forklift with 3m lift height"
-        },
-        "FG2": {
-            "productId": "FG2",
-            "productName": "DS Forklift 3T",
-            "productDescription": "3-ton diesel forklift for outdoor use"
-        },
-        "FG3": {
-            "productId": "FG3",
-            "productName": "EV Reach Truck",
-            "productDescription": "Electric reach truck for warehouse operations"
-        },
-        "FG4": {
-            "productId": "FG4",
-            "productName": "DSl Forklift 5T",
-            "productDescription": "5-ton heavy-duty diesel forklift"
-        },
-        "FG5": {
-            "productId": "FG5",
-            "productName": "EV Pallet Jack",
-            "productDescription": "Electric pallet jack for light operations"
-        }
-    },
-    "lineRestrictions": {
-        "Assembly_C": {
-            "restrictionName": "Assembly_C",
-            "validity": true,
-            "penaltyCost": 200,
-            "weeklyCapacity": {
-                "W2025-22": 6,
-                "W2025-23": 13,
-                "W2025-24": 13,
-                "W2025-25": 12,
-                "W2025-26": 8,
-                "W2025-27": 16,
-                "W2025-28": 17,
-                "W2025-29": 12,
-                "W2025-30": 7,
-                "W2025-31": 7,
-                "W2025-32": 8,
-                "W2025-33": 16
-            }
-        },
-        "Assembly_D": {
-            "restrictionName": "Assembly_D",
-            "validity": true,
-            "penaltyCost": 300,
-            "weeklyCapacity": {
-                "W2025-22": 11,
-                "W2025-23": 17,
-                "W2025-24": 17,
-                "W2025-25": 14,
-                "W2025-26": 18,
-                "W2025-27": 7,
-                "W2025-28": 17,
-                "W2025-29": 7,
-                "W2025-30": 9,
-                "W2025-31": 15,
-                "W2025-32": 17,
-                "W2025-33": 10
-            }
-        },
-        "Welding_LineA": {
-            "restrictionName": "Welding_LineA",
-            "validity": true,
-            "penaltyCost": 100,
-            "weeklyCapacity": {
-                "W2025-22": 12,
-                "W2025-23": 19,
-                "W2025-24": 13,
-                "W2025-25": 12,
-                "W2025-26": 11,
-                "W2025-27": 7,
-                "W2025-28": 19,
-                "W2025-29": 17,
-                "W2025-30": 11,
-                "W2025-31": 17,
-                "W2025-32": 15,
-                "W2025-33": 5
-            }
-        },
-        "Welding_LineB": {
-            "restrictionName": "Welding_LineB",
-            "validity": true,
-            "penaltyCost": 150,
-            "weeklyCapacity": {
-                "W2025-22": 15,
-                "W2025-23": 10,
-                "W2025-24": 10,
-                "W2025-25": 11,
-                "W2025-26": 12,
-                "W2025-27": 19,
-                "W2025-28": 10,
-                "W2025-29": 9,
-                "W2025-30": 10,
-                "W2025-31": 10,
-                "W2025-32": 16,
-                "W2025-33": 6
-            }
-        },
-        "Paint_Line": {
-            "restrictionName": "Paint_Line",
-            "validity": true,
-            "penaltyCost": 50,
-            "weeklyCapacity": {
-                "W2025-22": 5,
-                "W2025-23": 17,
-                "W2025-24": 7,
-                "W2025-25": 15,
-                "W2025-26": 12,
-                "W2025-27": 12,
-                "W2025-28": 17,
-                "W2025-29": 16,
-                "W2025-30": 8,
-                "W2025-31": 9,
-                "W2025-32": 12,
-                "W2025-33": 9
-            }
-        },
-        "Testing_Station": {
-            "restrictionName": "Testing_Station",
-            "validity": true,
-            "penaltyCost": 20,
-            "weeklyCapacity": {
-                "W2025-22": 17,
-                "W2025-23": 15,
-                "W2025-24": 17,
-                "W2025-25": 6,
-                "W2025-26": 5,
-                "W2025-27": 7,
-                "W2025-28": 18,
-                "W2025-29": 19,
-                "W2025-30": 17,
-                "W2025-31": 13,
-                "W2025-32": 17,
-                "W2025-33": 12
-            }
-        }
-    },
-    "operations": {
-        "100": {
-            "operationId": "100",
-            "primaryLineRestriction": "Assembly_C",
-            "alternateLineRestrictions": [
-                "Assembly_D",
-                "Welding_LineA",
-                "Welding_LineB",
-                "Paint_Line",
-                "Testing_Station"
-            ]
-        },
-        "200": {
-            "operationId": "200",
-            "primaryLineRestriction": "Assembly_C",
-            "alternateLineRestrictions": [
-                "Assembly_D",
-                "Welding_LineA",
-                "Welding_LineB",
-                "Paint_Line",
-                "Testing_Station"
-            ]
-        },
-        "300": {
-            "operationId": "300",
-            "primaryLineRestriction": "Assembly_C",
-            "alternateLineRestrictions": [
-                "Assembly_D",
-                "Welding_LineA",
-                "Welding_LineB",
-                "Paint_Line",
-                "Testing_Station"
-            ]
-        },
-        "400": {
-            "operationId": "400",
-            "primaryLineRestriction": "Assembly_C",
-            "alternateLineRestrictions": [
-                "Assembly_D",
-                "Welding_LineA",
-                "Welding_LineB",
-                "Paint_Line",
-                "Testing_Station"
-            ]
-        }
-    },
-    "salesOrders": {
-        "1": {
-            "orderNumber": 1,
-            "productId": "FG2",
-            "orderPromiseDate": "2025-07-07T00:00:00.000Z",
-            "orderQty": 2,
-            "revenue": 20000,
-            "cost": 18000,
-            "customerPriority": "Low",
-            "operations": [
-                "100",
-                "200",
-                "300",
-                "400"
+{
+   
+        "planningSystem": {
+            "planningStartDate": "2025-07-28T13:40:42.737Z",
+            "minEarlyDeliveryDays": 7,
+            "products": {
+                "FL001": {
+                    "productId": "FL001",
+                    "productName": "Electric Forklift 2T",
+                    "productDescription": "2-ton electric forklift with 3m lift height"
+                },
+                "FL002": {
+                    "productId": "FL002",
+                    "productName": "Diesel Forklift 3T",
+                    "productDescription": "3-ton diesel forklift for outdoor use"
+                },
+                "FL003": {
+                    "productId": "FL003",
+                    "productName": "Electric Reach Truck",
+                    "productDescription": "Electric reach truck for warehouse operations"
+                },
+                "FL004": {
+                    "productId": "FL004",
+                    "productName": "Diesel Forklift 5T",
+                    "productDescription": "5-ton heavy-duty diesel forklift"
+                },
+                "FL005": {
+                    "productId": "FL005",
+                    "productName": "Electric Pallet Jack",
+                    "productDescription": "Electric pallet jack for light operations"
+                }
+            },
+            "lineRestrictions": {
+                "Assembly_A": {
+                    "restrictionName": "Assembly_A",
+                    "validity": true,
+                    "penaltyCost": 500,
+                    "weeklyCapacity": {
+                        "W2025-31": 9,
+                        "W2025-32": 16,
+                        "W2025-33": 10,
+                        "W2025-34": 15,
+                        "W2025-35": 15,
+                        "W2025-36": 17,
+                        "W2025-37": 7,
+                        "W2025-38": 7,
+                        "W2025-39": 12,
+                        "W2025-40": 6,
+                        "W2025-41": 12,
+                        "W2025-42": 15
+                    }
+                },
+                "Assembly_B": {
+                    "restrictionName": "Assembly_B",
+                    "validity": true,
+                    "penaltyCost": 600,
+                    "weeklyCapacity": {
+                        "W2025-31": 7,
+                        "W2025-32": 14,
+                        "W2025-33": 9,
+                        "W2025-34": 14,
+                        "W2025-35": 14,
+                        "W2025-36": 18,
+                        "W2025-37": 19,
+                        "W2025-38": 18,
+                        "W2025-39": 5,
+                        "W2025-40": 8,
+                        "W2025-41": 12,
+                        "W2025-42": 9
+                    }
+                },
+                "Welding_Line1": {
+                    "restrictionName": "Welding_Line1",
+                    "validity": true,
+                    "penaltyCost": 300,
+                    "weeklyCapacity": {
+                        "W2025-31": 17,
+                        "W2025-32": 6,
+                        "W2025-33": 17,
+                        "W2025-34": 19,
+                        "W2025-35": 7,
+                        "W2025-36": 16,
+                        "W2025-37": 13,
+                        "W2025-38": 19,
+                        "W2025-39": 5,
+                        "W2025-40": 13,
+                        "W2025-41": 10,
+                        "W2025-42": 7
+                    }
+                },
+                "Welding_Line2": {
+                    "restrictionName": "Welding_Line2",
+                    "validity": true,
+                    "penaltyCost": 350,
+                    "weeklyCapacity": {
+                        "W2025-31": 16,
+                        "W2025-32": 6,
+                        "W2025-33": 18,
+                        "W2025-34": 15,
+                        "W2025-35": 19,
+                        "W2025-36": 8,
+                        "W2025-37": 8,
+                        "W2025-38": 8,
+                        "W2025-39": 15,
+                        "W2025-40": 12,
+                        "W2025-41": 14,
+                        "W2025-42": 5
+                    }
+                },
+                "Paint_Line": {
+                    "restrictionName": "Paint_Line",
+                    "validity": true,
+                    "penaltyCost": 400,
+                    "weeklyCapacity": {
+                        "W2025-31": 16,
+                        "W2025-32": 8,
+                        "W2025-33": 6,
+                        "W2025-34": 19,
+                        "W2025-35": 12,
+                        "W2025-36": 14,
+                        "W2025-37": 19,
+                        "W2025-38": 9,
+                        "W2025-39": 9,
+                        "W2025-40": 18,
+                        "W2025-41": 9,
+                        "W2025-42": 5
+                    }
+                },
+                "Testing_Station": {
+                    "restrictionName": "Testing_Station",
+                    "validity": true,
+                    "penaltyCost": 200,
+                    "weeklyCapacity": {
+                        "W2025-31": 14,
+                        "W2025-32": 18,
+                        "W2025-33": 9,
+                        "W2025-34": 12,
+                        "W2025-35": 8,
+                        "W2025-36": 8,
+                        "W2025-37": 13,
+                        "W2025-38": 7,
+                        "W2025-39": 17,
+                        "W2025-40": 7,
+                        "W2025-41": 5,
+                        "W2025-42": 18
+                    }
+                }
+            },
+            "operations": {
+                "0010": {
+                    "operationId": "0010",
+                    "primaryLineRestriction": "Welding_Line1",
+                    "alternateLineRestrictions": [
+                        "Welding_Line2"
+                    ]
+                },
+                "0020": {
+                    "operationId": "0020",
+                    "primaryLineRestriction": "Assembly_A",
+                    "alternateLineRestrictions": [
+                        "Assembly_B"
+                    ]
+                },
+                "0030": {
+                    "operationId": "0030",
+                    "primaryLineRestriction": "Paint_Line",
+                    "alternateLineRestrictions": []
+                },
+                "0040": {
+                    "operationId": "0040",
+                    "primaryLineRestriction": "Testing_Station",
+                    "alternateLineRestrictions": []
+                }
+            },
+            "salesOrders": {
+                "SO0001": {
+                    "orderNumber": "SO0001",
+                    "productId": "FL002",
+                    "orderPromiseDate": "2025-09-01T00:00:00.000Z",
+                    "orderQty": 1,
+                    "revenue": 39457.89449988556,
+                    "cost": 26117.729444465527,
+                    "customerPriority": "Low",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 1,
+                        "Chassis": 1,
+                        "Hydraulics": 2,
+                        "Electronics": 1,
+                        "Tires": 4
+                    }
+                },
+                "SO0002": {
+                    "orderNumber": "SO0002",
+                    "productId": "FL005",
+                    "orderPromiseDate": "2025-10-06T00:00:00.000Z",
+                    "orderQty": 4,
+                    "revenue": 116903.74556874987,
+                    "cost": 80480.85336181178,
+                    "customerPriority": "Low",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 4,
+                        "Chassis": 4,
+                        "Hydraulics": 8,
+                        "Electronics": 4,
+                        "Tires": 16,
+                        "Battery": 4
+                    }
+                },
+                "SO0003": {
+                    "orderNumber": "SO0003",
+                    "productId": "FL004",
+                    "orderPromiseDate": "2025-09-22T00:00:00.000Z",
+                    "orderQty": 4,
+                    "revenue": 100625.40071374264,
+                    "cost": 61644.09124674616,
+                    "customerPriority": "Medium",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 4,
+                        "Chassis": 4,
+                        "Hydraulics": 8,
+                        "Electronics": 4,
+                        "Tires": 16
+                    }
+                },
+                "SO0004": {
+                    "orderNumber": "SO0004",
+                    "productId": "FL004",
+                    "orderPromiseDate": "2025-09-22T00:00:00.000Z",
+                    "orderQty": 5,
+                    "revenue": 206074.3867397754,
+                    "cost": 130378.51861368674,
+                    "customerPriority": "Low",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 5,
+                        "Chassis": 5,
+                        "Hydraulics": 10,
+                        "Electronics": 5,
+                        "Tires": 20
+                    }
+                },
+                "SO0005": {
+                    "orderNumber": "SO0005",
+                    "productId": "FL002",
+                    "orderPromiseDate": "2025-09-22T00:00:00.000Z",
+                    "orderQty": 4,
+                    "revenue": 151014.27604449337,
+                    "cost": 96272.73945248322,
+                    "customerPriority": "Low",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 4,
+                        "Chassis": 4,
+                        "Hydraulics": 8,
+                        "Electronics": 4,
+                        "Tires": 16
+                    }
+                },
+                "SO0006": {
+                    "orderNumber": "SO0006",
+                    "productId": "FL001",
+                    "orderPromiseDate": "2025-09-15T00:00:00.000Z",
+                    "orderQty": 3,
+                    "revenue": 141357.9547394885,
+                    "cost": 112675.02499570599,
+                    "customerPriority": "High",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 3,
+                        "Chassis": 3,
+                        "Hydraulics": 3,
+                        "Electronics": 3,
+                        "Tires": 12,
+                        "Battery": 3
+                    }
+                },
+                "SO0007": {
+                    "orderNumber": "SO0007",
+                    "productId": "FL001",
+                    "orderPromiseDate": "2025-09-01T00:00:00.000Z",
+                    "orderQty": 3,
+                    "revenue": 124282.37050617673,
+                    "cost": 76712.85521357342,
+                    "customerPriority": "Medium",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 3,
+                        "Chassis": 3,
+                        "Hydraulics": 3,
+                        "Electronics": 3,
+                        "Tires": 12,
+                        "Battery": 3
+                    }
+                },
+                "SO0008": {
+                    "orderNumber": "SO0008",
+                    "productId": "FL004",
+                    "orderPromiseDate": "2025-08-04T00:00:00.000Z",
+                    "orderQty": 2,
+                    "revenue": 76872.34955629232,
+                    "cost": 47426.68074248931,
+                    "customerPriority": "Low",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 2,
+                        "Chassis": 2,
+                        "Hydraulics": 4,
+                        "Electronics": 2,
+                        "Tires": 8
+                    }
+                },
+                "SO0009": {
+                    "orderNumber": "SO0009",
+                    "productId": "FL002",
+                    "orderPromiseDate": "2025-09-29T00:00:00.000Z",
+                    "orderQty": 2,
+                    "revenue": 92199.77347831754,
+                    "cost": 61005.359262927355,
+                    "customerPriority": "High",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 2,
+                        "Chassis": 2,
+                        "Hydraulics": 4,
+                        "Electronics": 2,
+                        "Tires": 8
+                    }
+                },
+                "SO0010": {
+                    "orderNumber": "SO0010",
+                    "productId": "FL002",
+                    "orderPromiseDate": "2025-09-29T00:00:00.000Z",
+                    "orderQty": 1,
+                    "revenue": 37738.078855246655,
+                    "cost": 27420.447830652927,
+                    "customerPriority": "High",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 1,
+                        "Chassis": 1,
+                        "Hydraulics": 2,
+                        "Electronics": 1,
+                        "Tires": 4
+                    }
+                },
+                "SO0011": {
+                    "orderNumber": "SO0011",
+                    "productId": "FL002",
+                    "orderPromiseDate": "2025-10-13T00:00:00.000Z",
+                    "orderQty": 3,
+                    "revenue": 89842.85535087722,
+                    "cost": 61024.424142977,
+                    "customerPriority": "Medium",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 3,
+                        "Chassis": 3,
+                        "Hydraulics": 6,
+                        "Electronics": 3,
+                        "Tires": 12
+                    }
+                },
+                "SO0012": {
+                    "orderNumber": "SO0012",
+                    "productId": "FL005",
+                    "orderPromiseDate": "2025-09-01T00:00:00.000Z",
+                    "orderQty": 1,
+                    "revenue": 21707.060561959912,
+                    "cost": 17016.873238708806,
+                    "customerPriority": "Low",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 1,
+                        "Chassis": 1,
+                        "Hydraulics": 2,
+                        "Electronics": 1,
+                        "Tires": 4,
+                        "Battery": 1
+                    }
+                },
+                "SO0013": {
+                    "orderNumber": "SO0013",
+                    "productId": "FL001",
+                    "orderPromiseDate": "2025-08-25T00:00:00.000Z",
+                    "orderQty": 3,
+                    "revenue": 137791.62886555132,
+                    "cost": 97354.2712142293,
+                    "customerPriority": "Medium",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 3,
+                        "Chassis": 3,
+                        "Hydraulics": 3,
+                        "Electronics": 3,
+                        "Tires": 12,
+                        "Battery": 3
+                    }
+                },
+                "SO0014": {
+                    "orderNumber": "SO0014",
+                    "productId": "FL005",
+                    "orderPromiseDate": "2025-08-25T00:00:00.000Z",
+                    "orderQty": 4,
+                    "revenue": 91417.93975529268,
+                    "cost": 63550.895330252664,
+                    "customerPriority": "Low",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 4,
+                        "Chassis": 4,
+                        "Hydraulics": 8,
+                        "Electronics": 4,
+                        "Tires": 16,
+                        "Battery": 4
+                    }
+                },
+                "SO0015": {
+                    "orderNumber": "SO0015",
+                    "productId": "FL003",
+                    "orderPromiseDate": "2025-10-06T00:00:00.000Z",
+                    "orderQty": 3,
+                    "revenue": 64377.474857009816,
+                    "cost": 45322.14859136538,
+                    "customerPriority": "High",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 3,
+                        "Chassis": 3,
+                        "Hydraulics": 3,
+                        "Electronics": 3,
+                        "Tires": 12,
+                        "Battery": 3
+                    }
+                },
+                "SO0016": {
+                    "orderNumber": "SO0016",
+                    "productId": "FL004",
+                    "orderPromiseDate": "2025-10-20T00:00:00.000Z",
+                    "orderQty": 1,
+                    "revenue": 23309.122525414154,
+                    "cost": 15697.630267177063,
+                    "customerPriority": "Medium",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 1,
+                        "Chassis": 1,
+                        "Hydraulics": 2,
+                        "Electronics": 1,
+                        "Tires": 4
+                    }
+                },
+                "SO0017": {
+                    "orderNumber": "SO0017",
+                    "productId": "FL004",
+                    "orderPromiseDate": "2025-10-06T00:00:00.000Z",
+                    "orderQty": 3,
+                    "revenue": 51666.674479255686,
+                    "cost": 39833.70386716282,
+                    "customerPriority": "High",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 3,
+                        "Chassis": 3,
+                        "Hydraulics": 6,
+                        "Electronics": 3,
+                        "Tires": 12
+                    }
+                },
+                "SO0018": {
+                    "orderNumber": "SO0018",
+                    "productId": "FL005",
+                    "orderPromiseDate": "2025-10-13T00:00:00.000Z",
+                    "orderQty": 4,
+                    "revenue": 110483.13397461138,
+                    "cost": 71136.64639963022,
+                    "customerPriority": "Medium",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 4,
+                        "Chassis": 4,
+                        "Hydraulics": 8,
+                        "Electronics": 4,
+                        "Tires": 16,
+                        "Battery": 4
+                    }
+                },
+                "SO0019": {
+                    "orderNumber": "SO0019",
+                    "productId": "FL001",
+                    "orderPromiseDate": "2025-08-18T00:00:00.000Z",
+                    "orderQty": 5,
+                    "revenue": 118573.98866456538,
+                    "cost": 92812.76530217177,
+                    "customerPriority": "Medium",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 5,
+                        "Chassis": 5,
+                        "Hydraulics": 5,
+                        "Electronics": 5,
+                        "Tires": 20,
+                        "Battery": 5
+                    }
+                },
+                "SO0020": {
+                    "orderNumber": "SO0020",
+                    "productId": "FL001",
+                    "orderPromiseDate": "2025-09-01T00:00:00.000Z",
+                    "orderQty": 2,
+                    "revenue": 99467.3846182075,
+                    "cost": 74297.32498885051,
+                    "customerPriority": "Low",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 2,
+                        "Chassis": 2,
+                        "Hydraulics": 2,
+                        "Electronics": 2,
+                        "Tires": 8,
+                        "Battery": 2
+                    }
+                },
+                "SO0021": {
+                    "orderNumber": "SO0021",
+                    "productId": "FL004",
+                    "orderPromiseDate": "2025-10-20T00:00:00.000Z",
+                    "orderQty": 1,
+                    "revenue": 15804.686894581624,
+                    "cost": 10907.625542042308,
+                    "customerPriority": "Medium",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 1,
+                        "Chassis": 1,
+                        "Hydraulics": 2,
+                        "Electronics": 1,
+                        "Tires": 4
+                    }
+                },
+                "SO0022": {
+                    "orderNumber": "SO0022",
+                    "productId": "FL004",
+                    "orderPromiseDate": "2025-09-29T00:00:00.000Z",
+                    "orderQty": 3,
+                    "revenue": 87382.16181853053,
+                    "cost": 55157.13585263732,
+                    "customerPriority": "High",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 3,
+                        "Chassis": 3,
+                        "Hydraulics": 6,
+                        "Electronics": 3,
+                        "Tires": 12
+                    }
+                },
+                "SO0023": {
+                    "orderNumber": "SO0023",
+                    "productId": "FL005",
+                    "orderPromiseDate": "2025-10-06T00:00:00.000Z",
+                    "orderQty": 3,
+                    "revenue": 86246.42394292014,
+                    "cost": 62791.75920619114,
+                    "customerPriority": "Medium",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 3,
+                        "Chassis": 3,
+                        "Hydraulics": 6,
+                        "Electronics": 3,
+                        "Tires": 12,
+                        "Battery": 3
+                    }
+                },
+                "SO0024": {
+                    "orderNumber": "SO0024",
+                    "productId": "FL002",
+                    "orderPromiseDate": "2025-08-04T00:00:00.000Z",
+                    "orderQty": 4,
+                    "revenue": 166867.14029742428,
+                    "cost": 127919.80554709108,
+                    "customerPriority": "Low",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 4,
+                        "Chassis": 4,
+                        "Hydraulics": 8,
+                        "Electronics": 4,
+                        "Tires": 16
+                    }
+                },
+                "SO0025": {
+                    "orderNumber": "SO0025",
+                    "productId": "FL001",
+                    "orderPromiseDate": "2025-09-01T00:00:00.000Z",
+                    "orderQty": 3,
+                    "revenue": 107169.70852076386,
+                    "cost": 72911.42501783186,
+                    "customerPriority": "High",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 3,
+                        "Chassis": 3,
+                        "Hydraulics": 3,
+                        "Electronics": 3,
+                        "Tires": 12,
+                        "Battery": 3
+                    }
+                },
+                "SO0026": {
+                    "orderNumber": "SO0026",
+                    "productId": "FL005",
+                    "orderPromiseDate": "2025-09-29T00:00:00.000Z",
+                    "orderQty": 4,
+                    "revenue": 115611.41088597136,
+                    "cost": 82557.41252187395,
+                    "customerPriority": "Low",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 4,
+                        "Chassis": 4,
+                        "Hydraulics": 8,
+                        "Electronics": 4,
+                        "Tires": 16,
+                        "Battery": 4
+                    }
+                },
+                "SO0027": {
+                    "orderNumber": "SO0027",
+                    "productId": "FL001",
+                    "orderPromiseDate": "2025-08-25T00:00:00.000Z",
+                    "orderQty": 5,
+                    "revenue": 181358.39149801753,
+                    "cost": 133975.11333494596,
+                    "customerPriority": "High",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 5,
+                        "Chassis": 5,
+                        "Hydraulics": 5,
+                        "Electronics": 5,
+                        "Tires": 20,
+                        "Battery": 5
+                    }
+                },
+                "SO0028": {
+                    "orderNumber": "SO0028",
+                    "productId": "FL005",
+                    "orderPromiseDate": "2025-08-11T00:00:00.000Z",
+                    "orderQty": 5,
+                    "revenue": 179035.38945192203,
+                    "cost": 117858.57400489676,
+                    "customerPriority": "High",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 5,
+                        "Chassis": 5,
+                        "Hydraulics": 10,
+                        "Electronics": 5,
+                        "Tires": 20,
+                        "Battery": 5
+                    }
+                },
+                "SO0029": {
+                    "orderNumber": "SO0029",
+                    "productId": "FL001",
+                    "orderPromiseDate": "2025-10-06T00:00:00.000Z",
+                    "orderQty": 4,
+                    "revenue": 105439.86236143482,
+                    "cost": 78780.66507700674,
+                    "customerPriority": "Low",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 4,
+                        "Chassis": 4,
+                        "Hydraulics": 4,
+                        "Electronics": 4,
+                        "Tires": 16,
+                        "Battery": 4
+                    }
+                },
+                "SO0030": {
+                    "orderNumber": "SO0030",
+                    "productId": "FL003",
+                    "orderPromiseDate": "2025-09-15T00:00:00.000Z",
+                    "orderQty": 1,
+                    "revenue": 29852.074980381884,
+                    "cost": 21902.462748747806,
+                    "customerPriority": "Medium",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 1,
+                        "Chassis": 1,
+                        "Hydraulics": 1,
+                        "Electronics": 1,
+                        "Tires": 4,
+                        "Battery": 1
+                    }
+                },
+                "SO0031": {
+                    "orderNumber": "SO0031",
+                    "productId": "FL002",
+                    "orderPromiseDate": "2025-09-22T00:00:00.000Z",
+                    "orderQty": 3,
+                    "revenue": 122095.92595929964,
+                    "cost": 96415.20006392167,
+                    "customerPriority": "Medium",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 3,
+                        "Chassis": 3,
+                        "Hydraulics": 6,
+                        "Electronics": 3,
+                        "Tires": 12
+                    }
+                },
+                "SO0032": {
+                    "orderNumber": "SO0032",
+                    "productId": "FL003",
+                    "orderPromiseDate": "2025-09-01T00:00:00.000Z",
+                    "orderQty": 5,
+                    "revenue": 185890.11996776448,
+                    "cost": 135982.97521505706,
+                    "customerPriority": "Medium",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 5,
+                        "Chassis": 5,
+                        "Hydraulics": 5,
+                        "Electronics": 5,
+                        "Tires": 20,
+                        "Battery": 5
+                    }
+                },
+                "SO0033": {
+                    "orderNumber": "SO0033",
+                    "productId": "FL004",
+                    "orderPromiseDate": "2025-09-29T00:00:00.000Z",
+                    "orderQty": 5,
+                    "revenue": 189957.09045080357,
+                    "cost": 138559.54144134364,
+                    "customerPriority": "Medium",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 5,
+                        "Chassis": 5,
+                        "Hydraulics": 10,
+                        "Electronics": 5,
+                        "Tires": 20
+                    }
+                },
+                "SO0034": {
+                    "orderNumber": "SO0034",
+                    "productId": "FL001",
+                    "orderPromiseDate": "2025-10-20T00:00:00.000Z",
+                    "orderQty": 1,
+                    "revenue": 41574.57420467118,
+                    "cost": 31920.739986398596,
+                    "customerPriority": "Medium",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 1,
+                        "Chassis": 1,
+                        "Hydraulics": 1,
+                        "Electronics": 1,
+                        "Tires": 4,
+                        "Battery": 1
+                    }
+                },
+                "SO0035": {
+                    "orderNumber": "SO0035",
+                    "productId": "FL003",
+                    "orderPromiseDate": "2025-09-01T00:00:00.000Z",
+                    "orderQty": 5,
+                    "revenue": 135746.62982151206,
+                    "cost": 84910.9189602205,
+                    "customerPriority": "Low",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 5,
+                        "Chassis": 5,
+                        "Hydraulics": 5,
+                        "Electronics": 5,
+                        "Tires": 20,
+                        "Battery": 5
+                    }
+                },
+                "SO0036": {
+                    "orderNumber": "SO0036",
+                    "productId": "FL002",
+                    "orderPromiseDate": "2025-09-08T00:00:00.000Z",
+                    "orderQty": 5,
+                    "revenue": 108587.02081788631,
+                    "cost": 86581.91042125518,
+                    "customerPriority": "High",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 5,
+                        "Chassis": 5,
+                        "Hydraulics": 10,
+                        "Electronics": 5,
+                        "Tires": 20
+                    }
+                },
+                "SO0037": {
+                    "orderNumber": "SO0037",
+                    "productId": "FL002",
+                    "orderPromiseDate": "2025-08-04T00:00:00.000Z",
+                    "orderQty": 4,
+                    "revenue": 82058.61444495695,
+                    "cost": 56702.97008299733,
+                    "customerPriority": "High",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 4,
+                        "Chassis": 4,
+                        "Hydraulics": 8,
+                        "Electronics": 4,
+                        "Tires": 16
+                    }
+                },
+                "SO0038": {
+                    "orderNumber": "SO0038",
+                    "productId": "FL001",
+                    "orderPromiseDate": "2025-10-06T00:00:00.000Z",
+                    "orderQty": 4,
+                    "revenue": 162463.28931817462,
+                    "cost": 115241.3553355197,
+                    "customerPriority": "Low",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 4,
+                        "Chassis": 4,
+                        "Hydraulics": 4,
+                        "Electronics": 4,
+                        "Tires": 16,
+                        "Battery": 4
+                    }
+                },
+                "SO0039": {
+                    "orderNumber": "SO0039",
+                    "productId": "FL001",
+                    "orderPromiseDate": "2025-10-20T00:00:00.000Z",
+                    "orderQty": 4,
+                    "revenue": 89187.4750438828,
+                    "cost": 58967.7979708814,
+                    "customerPriority": "High",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 4,
+                        "Chassis": 4,
+                        "Hydraulics": 4,
+                        "Electronics": 4,
+                        "Tires": 16,
+                        "Battery": 4
+                    }
+                },
+                "SO0040": {
+                    "orderNumber": "SO0040",
+                    "productId": "FL005",
+                    "orderPromiseDate": "2025-10-06T00:00:00.000Z",
+                    "orderQty": 2,
+                    "revenue": 99184.90316066206,
+                    "cost": 67263.60206828712,
+                    "customerPriority": "Low",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 2,
+                        "Chassis": 2,
+                        "Hydraulics": 4,
+                        "Electronics": 2,
+                        "Tires": 8,
+                        "Battery": 2
+                    }
+                },
+                "SO0041": {
+                    "orderNumber": "SO0041",
+                    "productId": "FL001",
+                    "orderPromiseDate": "2025-09-29T00:00:00.000Z",
+                    "orderQty": 1,
+                    "revenue": 34165.29239538255,
+                    "cost": 25156.090387667122,
+                    "customerPriority": "High",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 1,
+                        "Chassis": 1,
+                        "Hydraulics": 1,
+                        "Electronics": 1,
+                        "Tires": 4,
+                        "Battery": 1
+                    }
+                },
+                "SO0042": {
+                    "orderNumber": "SO0042",
+                    "productId": "FL005",
+                    "orderPromiseDate": "2025-09-22T00:00:00.000Z",
+                    "orderQty": 1,
+                    "revenue": 35775.89373382447,
+                    "cost": 25077.710866971436,
+                    "customerPriority": "Low",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 1,
+                        "Chassis": 1,
+                        "Hydraulics": 2,
+                        "Electronics": 1,
+                        "Tires": 4,
+                        "Battery": 1
+                    }
+                },
+                "SO0043": {
+                    "orderNumber": "SO0043",
+                    "productId": "FL003",
+                    "orderPromiseDate": "2025-08-04T00:00:00.000Z",
+                    "orderQty": 4,
+                    "revenue": 63037.548495872754,
+                    "cost": 48611.830979390026,
+                    "customerPriority": "Low",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 4,
+                        "Chassis": 4,
+                        "Hydraulics": 4,
+                        "Electronics": 4,
+                        "Tires": 16,
+                        "Battery": 4
+                    }
+                },
+                "SO0044": {
+                    "orderNumber": "SO0044",
+                    "productId": "FL003",
+                    "orderPromiseDate": "2025-09-22T00:00:00.000Z",
+                    "orderQty": 1,
+                    "revenue": 33005.20606539749,
+                    "cost": 24309.21501204831,
+                    "customerPriority": "High",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 1,
+                        "Chassis": 1,
+                        "Hydraulics": 1,
+                        "Electronics": 1,
+                        "Tires": 4,
+                        "Battery": 1
+                    }
+                },
+                "SO0045": {
+                    "orderNumber": "SO0045",
+                    "productId": "FL004",
+                    "orderPromiseDate": "2025-09-01T00:00:00.000Z",
+                    "orderQty": 2,
+                    "revenue": 58244.96715580091,
+                    "cost": 36126.09726266084,
+                    "customerPriority": "High",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 2,
+                        "Chassis": 2,
+                        "Hydraulics": 4,
+                        "Electronics": 2,
+                        "Tires": 8
+                    }
+                },
+                "SO0046": {
+                    "orderNumber": "SO0046",
+                    "productId": "FL002",
+                    "orderPromiseDate": "2025-10-13T00:00:00.000Z",
+                    "orderQty": 1,
+                    "revenue": 29832.848031962218,
+                    "cost": 19545.823550110403,
+                    "customerPriority": "Low",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 1,
+                        "Chassis": 1,
+                        "Hydraulics": 2,
+                        "Electronics": 1,
+                        "Tires": 4
+                    }
+                },
+                "SO0047": {
+                    "orderNumber": "SO0047",
+                    "productId": "FL005",
+                    "orderPromiseDate": "2025-10-06T00:00:00.000Z",
+                    "orderQty": 2,
+                    "revenue": 86107.82872121826,
+                    "cost": 58099.53826154501,
+                    "customerPriority": "High",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 2,
+                        "Chassis": 2,
+                        "Hydraulics": 4,
+                        "Electronics": 2,
+                        "Tires": 8,
+                        "Battery": 2
+                    }
+                },
+                "SO0048": {
+                    "orderNumber": "SO0048",
+                    "productId": "FL002",
+                    "orderPromiseDate": "2025-08-04T00:00:00.000Z",
+                    "orderQty": 5,
+                    "revenue": 135419.86927275793,
+                    "cost": 81738.35999590863,
+                    "customerPriority": "Low",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 5,
+                        "Chassis": 5,
+                        "Hydraulics": 10,
+                        "Electronics": 5,
+                        "Tires": 20
+                    }
+                },
+                "SO0049": {
+                    "orderNumber": "SO0049",
+                    "productId": "FL001",
+                    "orderPromiseDate": "2025-10-20T00:00:00.000Z",
+                    "orderQty": 3,
+                    "revenue": 129509.08986475455,
+                    "cost": 88019.07325505132,
+                    "customerPriority": "Low",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 3,
+                        "Chassis": 3,
+                        "Hydraulics": 3,
+                        "Electronics": 3,
+                        "Tires": 12,
+                        "Battery": 3
+                    }
+                },
+                "SO0050": {
+                    "orderNumber": "SO0050",
+                    "productId": "FL004",
+                    "orderPromiseDate": "2025-09-15T00:00:00.000Z",
+                    "orderQty": 1,
+                    "revenue": 49802.80717705393,
+                    "cost": 36347.483522435694,
+                    "customerPriority": "Low",
+                    "operations": [
+                        "0010",
+                        "0020",
+                        "0030",
+                        "0040"
+                    ],
+                    "components": {
+                        "Engine": 1,
+                        "Chassis": 1,
+                        "Hydraulics": 2,
+                        "Electronics": 1,
+                        "Tires": 4
+                    }
+                }
+            },
+            "penaltyRules": {
+                "High_FL001": {
+                    "customerPriority": "High",
+                    "productId": "FL001",
+                    "lateDeliveryPenalty": 100,
+                    "noFulfillmentPenalty": 1000
+                },
+                "High_FL002": {
+                    "customerPriority": "High",
+                    "productId": "FL002",
+                    "lateDeliveryPenalty": 100,
+                    "noFulfillmentPenalty": 1000
+                },
+                "High_FL003": {
+                    "customerPriority": "High",
+                    "productId": "FL003",
+                    "lateDeliveryPenalty": 100,
+                    "noFulfillmentPenalty": 1000
+                },
+                "High_FL004": {
+                    "customerPriority": "High",
+                    "productId": "FL004",
+                    "lateDeliveryPenalty": 100,
+                    "noFulfillmentPenalty": 1000
+                },
+                "High_FL005": {
+                    "customerPriority": "High",
+                    "productId": "FL005",
+                    "lateDeliveryPenalty": 100,
+                    "noFulfillmentPenalty": 1000
+                },
+                "Medium_FL001": {
+                    "customerPriority": "Medium",
+                    "productId": "FL001",
+                    "lateDeliveryPenalty": 50,
+                    "noFulfillmentPenalty": 500
+                },
+                "Medium_FL002": {
+                    "customerPriority": "Medium",
+                    "productId": "FL002",
+                    "lateDeliveryPenalty": 50,
+                    "noFulfillmentPenalty": 500
+                },
+                "Medium_FL003": {
+                    "customerPriority": "Medium",
+                    "productId": "FL003",
+                    "lateDeliveryPenalty": 50,
+                    "noFulfillmentPenalty": 500
+                },
+                "Medium_FL004": {
+                    "customerPriority": "Medium",
+                    "productId": "FL004",
+                    "lateDeliveryPenalty": 50,
+                    "noFulfillmentPenalty": 500
+                },
+                "Medium_FL005": {
+                    "customerPriority": "Medium",
+                    "productId": "FL005",
+                    "lateDeliveryPenalty": 50,
+                    "noFulfillmentPenalty": 500
+                },
+                "Low_FL001": {
+                    "customerPriority": "Low",
+                    "productId": "FL001",
+                    "lateDeliveryPenalty": 25,
+                    "noFulfillmentPenalty": 200
+                },
+                "Low_FL002": {
+                    "customerPriority": "Low",
+                    "productId": "FL002",
+                    "lateDeliveryPenalty": 25,
+                    "noFulfillmentPenalty": 200
+                },
+                "Low_FL003": {
+                    "customerPriority": "Low",
+                    "productId": "FL003",
+                    "lateDeliveryPenalty": 25,
+                    "noFulfillmentPenalty": 200
+                },
+                "Low_FL004": {
+                    "customerPriority": "Low",
+                    "productId": "FL004",
+                    "lateDeliveryPenalty": 25,
+                    "noFulfillmentPenalty": 200
+                },
+                "Low_FL005": {
+                    "customerPriority": "Low",
+                    "productId": "FL005",
+                    "lateDeliveryPenalty": 25,
+                    "noFulfillmentPenalty": 200
+                }
+            },
+            "componentAvailability": {
+                "Engine": {
+                    "componentId": "Engine",
+                    "weeklyAvailability": {
+                        "W2025-31": 178,
+                        "W2025-32": 135,
+                        "W2025-33": 83,
+                        "W2025-34": 161,
+                        "W2025-35": 143,
+                        "W2025-36": 84,
+                        "W2025-37": 196,
+                        "W2025-38": 113,
+                        "W2025-39": 78,
+                        "W2025-40": 108,
+                        "W2025-41": 154,
+                        "W2025-42": 190,
+                        "W2025-43": 137,
+                        "W2025-44": 65,
+                        "W2025-45": 157,
+                        "W2025-46": 54,
+                        "W2025-47": 99,
+                        "W2025-48": 122,
+                        "W2025-49": 82,
+                        "W2025-50": 199,
+                        "W2025-51": 110,
+                        "W2025-52": 191,
+                        "W2025-01": 63,
+                        "W2026-02": 56,
+                        "W2026-03": 94,
+                        "W2026-04": 118,
+                        "W2026-05": 116,
+                        "W2026-06": 86,
+                        "W2026-07": 64,
+                        "W2026-08": 177,
+                        "W2026-09": 191,
+                        "W2026-10": 146,
+                        "W2026-11": 51,
+                        "W2026-12": 52,
+                        "W2026-13": 73,
+                        "W2026-14": 74,
+                        "W2026-15": 146,
+                        "W2026-16": 78,
+                        "W2026-17": 95,
+                        "W2026-18": 137,
+                        "W2026-19": 180,
+                        "W2026-20": 93,
+                        "W2026-21": 189,
+                        "W2026-22": 164,
+                        "W2026-23": 191,
+                        "W2026-24": 129,
+                        "W2026-25": 80,
+                        "W2026-26": 56,
+                        "W2026-27": 87,
+                        "W2026-28": 131,
+                        "W2026-29": 150,
+                        "W2026-30": 147
+                    }
+                },
+                "Chassis": {
+                    "componentId": "Chassis",
+                    "weeklyAvailability": {
+                        "W2025-31": 129,
+                        "W2025-32": 181,
+                        "W2025-33": 187,
+                        "W2025-34": 108,
+                        "W2025-35": 147,
+                        "W2025-36": 53,
+                        "W2025-37": 197,
+                        "W2025-38": 63,
+                        "W2025-39": 174,
+                        "W2025-40": 60,
+                        "W2025-41": 78,
+                        "W2025-42": 120,
+                        "W2025-43": 107,
+                        "W2025-44": 77,
+                        "W2025-45": 150,
+                        "W2025-46": 166,
+                        "W2025-47": 160,
+                        "W2025-48": 172,
+                        "W2025-49": 135,
+                        "W2025-50": 141,
+                        "W2025-51": 125,
+                        "W2025-52": 197,
+                        "W2025-01": 88,
+                        "W2026-02": 173,
+                        "W2026-03": 190,
+                        "W2026-04": 120,
+                        "W2026-05": 193,
+                        "W2026-06": 120,
+                        "W2026-07": 69,
+                        "W2026-08": 176,
+                        "W2026-09": 118,
+                        "W2026-10": 87,
+                        "W2026-11": 190,
+                        "W2026-12": 65,
+                        "W2026-13": 163,
+                        "W2026-14": 79,
+                        "W2026-15": 86,
+                        "W2026-16": 100,
+                        "W2026-17": 160,
+                        "W2026-18": 162,
+                        "W2026-19": 175,
+                        "W2026-20": 140,
+                        "W2026-21": 193,
+                        "W2026-22": 57,
+                        "W2026-23": 180,
+                        "W2026-24": 136,
+                        "W2026-25": 86,
+                        "W2026-26": 94,
+                        "W2026-27": 122,
+                        "W2026-28": 59,
+                        "W2026-29": 129,
+                        "W2026-30": 61
+                    }
+                },
+                "Hydraulics": {
+                    "componentId": "Hydraulics",
+                    "weeklyAvailability": {
+                        "W2025-31": 88,
+                        "W2025-32": 128,
+                        "W2025-33": 117,
+                        "W2025-34": 156,
+                        "W2025-35": 81,
+                        "W2025-36": 123,
+                        "W2025-37": 152,
+                        "W2025-38": 192,
+                        "W2025-39": 186,
+                        "W2025-40": 106,
+                        "W2025-41": 68,
+                        "W2025-42": 65,
+                        "W2025-43": 136,
+                        "W2025-44": 109,
+                        "W2025-45": 153,
+                        "W2025-46": 97,
+                        "W2025-47": 133,
+                        "W2025-48": 191,
+                        "W2025-49": 159,
+                        "W2025-50": 103,
+                        "W2025-51": 80,
+                        "W2025-52": 184,
+                        "W2025-01": 87,
+                        "W2026-02": 69,
+                        "W2026-03": 176,
+                        "W2026-04": 173,
+                        "W2026-05": 113,
+                        "W2026-06": 182,
+                        "W2026-07": 189,
+                        "W2026-08": 90,
+                        "W2026-09": 98,
+                        "W2026-10": 128,
+                        "W2026-11": 85,
+                        "W2026-12": 103,
+                        "W2026-13": 86,
+                        "W2026-14": 182,
+                        "W2026-15": 63,
+                        "W2026-16": 171,
+                        "W2026-17": 61,
+                        "W2026-18": 176,
+                        "W2026-19": 122,
+                        "W2026-20": 198,
+                        "W2026-21": 169,
+                        "W2026-22": 90,
+                        "W2026-23": 163,
+                        "W2026-24": 195,
+                        "W2026-25": 147,
+                        "W2026-26": 109,
+                        "W2026-27": 57,
+                        "W2026-28": 118,
+                        "W2026-29": 84,
+                        "W2026-30": 126
+                    }
+                },
+                "Electronics": {
+                    "componentId": "Electronics",
+                    "weeklyAvailability": {
+                        "W2025-31": 77,
+                        "W2025-32": 194,
+                        "W2025-33": 196,
+                        "W2025-34": 63,
+                        "W2025-35": 132,
+                        "W2025-36": 68,
+                        "W2025-37": 156,
+                        "W2025-38": 84,
+                        "W2025-39": 148,
+                        "W2025-40": 59,
+                        "W2025-41": 126,
+                        "W2025-42": 133,
+                        "W2025-43": 182,
+                        "W2025-44": 112,
+                        "W2025-45": 127,
+                        "W2025-46": 74,
+                        "W2025-47": 72,
+                        "W2025-48": 97,
+                        "W2025-49": 148,
+                        "W2025-50": 147,
+                        "W2025-51": 185,
+                        "W2025-52": 121,
+                        "W2025-01": 136,
+                        "W2026-02": 118,
+                        "W2026-03": 142,
+                        "W2026-04": 147,
+                        "W2026-05": 160,
+                        "W2026-06": 107,
+                        "W2026-07": 109,
+                        "W2026-08": 113,
+                        "W2026-09": 130,
+                        "W2026-10": 78,
+                        "W2026-11": 135,
+                        "W2026-12": 99,
+                        "W2026-13": 133,
+                        "W2026-14": 146,
+                        "W2026-15": 140,
+                        "W2026-16": 196,
+                        "W2026-17": 134,
+                        "W2026-18": 68,
+                        "W2026-19": 181,
+                        "W2026-20": 82,
+                        "W2026-21": 58,
+                        "W2026-22": 97,
+                        "W2026-23": 187,
+                        "W2026-24": 89,
+                        "W2026-25": 133,
+                        "W2026-26": 163,
+                        "W2026-27": 51,
+                        "W2026-28": 141,
+                        "W2026-29": 171,
+                        "W2026-30": 85
+                    }
+                },
+                "Tires": {
+                    "componentId": "Tires",
+                    "weeklyAvailability": {
+                        "W2025-31": 95,
+                        "W2025-32": 104,
+                        "W2025-33": 132,
+                        "W2025-34": 191,
+                        "W2025-35": 135,
+                        "W2025-36": 105,
+                        "W2025-37": 106,
+                        "W2025-38": 63,
+                        "W2025-39": 199,
+                        "W2025-40": 176,
+                        "W2025-41": 187,
+                        "W2025-42": 96,
+                        "W2025-43": 107,
+                        "W2025-44": 102,
+                        "W2025-45": 172,
+                        "W2025-46": 153,
+                        "W2025-47": 63,
+                        "W2025-48": 105,
+                        "W2025-49": 130,
+                        "W2025-50": 168,
+                        "W2025-51": 92,
+                        "W2025-52": 150,
+                        "W2025-01": 169,
+                        "W2026-02": 148,
+                        "W2026-03": 74,
+                        "W2026-04": 178,
+                        "W2026-05": 114,
+                        "W2026-06": 198,
+                        "W2026-07": 81,
+                        "W2026-08": 189,
+                        "W2026-09": 105,
+                        "W2026-10": 195,
+                        "W2026-11": 146,
+                        "W2026-12": 117,
+                        "W2026-13": 122,
+                        "W2026-14": 189,
+                        "W2026-15": 163,
+                        "W2026-16": 166,
+                        "W2026-17": 57,
+                        "W2026-18": 102,
+                        "W2026-19": 61,
+                        "W2026-20": 176,
+                        "W2026-21": 94,
+                        "W2026-22": 50,
+                        "W2026-23": 134,
+                        "W2026-24": 76,
+                        "W2026-25": 145,
+                        "W2026-26": 122,
+                        "W2026-27": 172,
+                        "W2026-28": 55,
+                        "W2026-29": 154,
+                        "W2026-30": 179
+                    }
+                },
+                "Battery": {
+                    "componentId": "Battery",
+                    "weeklyAvailability": {
+                        "W2025-31": 149,
+                        "W2025-32": 61,
+                        "W2025-33": 99,
+                        "W2025-34": 94,
+                        "W2025-35": 133,
+                        "W2025-36": 54,
+                        "W2025-37": 140,
+                        "W2025-38": 68,
+                        "W2025-39": 88,
+                        "W2025-40": 60,
+                        "W2025-41": 102,
+                        "W2025-42": 125,
+                        "W2025-43": 73,
+                        "W2025-44": 176,
+                        "W2025-45": 87,
+                        "W2025-46": 100,
+                        "W2025-47": 168,
+                        "W2025-48": 104,
+                        "W2025-49": 174,
+                        "W2025-50": 63,
+                        "W2025-51": 171,
+                        "W2025-52": 96,
+                        "W2025-01": 142,
+                        "W2026-02": 184,
+                        "W2026-03": 161,
+                        "W2026-04": 139,
+                        "W2026-05": 55,
+                        "W2026-06": 188,
+                        "W2026-07": 99,
+                        "W2026-08": 61,
+                        "W2026-09": 179,
+                        "W2026-10": 146,
+                        "W2026-11": 57,
+                        "W2026-12": 148,
+                        "W2026-13": 149,
+                        "W2026-14": 93,
+                        "W2026-15": 67,
+                        "W2026-16": 60,
+                        "W2026-17": 180,
+                        "W2026-18": 130,
+                        "W2026-19": 129,
+                        "W2026-20": 185,
+                        "W2026-21": 113,
+                        "W2026-22": 96,
+                        "W2026-23": 160,
+                        "W2026-24": 127,
+                        "W2026-25": 173,
+                        "W2026-26": 141,
+                        "W2026-27": 123,
+                        "W2026-28": 116,
+                        "W2026-29": 169,
+                        "W2026-30": 103
+                    }
+                }
+            },
+            "priorityDeliveryCriteria": {
+                "Low": {
+                    "customerPriority": "Low",
+                    "maxDelayDays": 14,
+                    "penaltyMultiplier": 1,
+                    "description": "Low priority - up to 2 weeks delay allowed"
+                },
+                "Medium": {
+                    "customerPriority": "Medium",
+                    "maxDelayDays": 7,
+                    "penaltyMultiplier": 2,
+                    "description": "Medium priority - up to 1 week delay allowed"
+                },
+                "High": {
+                    "customerPriority": "High",
+                    "maxDelayDays": 7,
+                    "penaltyMultiplier": 3,
+                    "description": "High priority - must be on time or early"
+                }
+            },
+            "weeks": [
+                "W2025-31",
+                "W2025-32",
+                "W2025-33",
+                "W2025-34",
+                "W2025-35",
+                "W2025-36",
+                "W2025-37",
+                "W2025-38",
+                "W2025-39",
+                "W2025-40",
+                "W2025-41",
+                "W2025-42",
+                "W2025-43",
+                "W2025-44",
+                "W2025-45",
+                "W2025-46",
+                "W2025-47",
+                "W2025-48",
+                "W2025-49",
+                "W2025-50",
+                "W2025-51",
+                "W2025-52",
+                "W2025-01",
+                "W2026-02",
+                "W2026-03",
+                "W2026-04",
+                "W2026-05",
+                "W2026-06",
+                "W2026-07",
+                "W2026-08",
+                "W2026-09",
+                "W2026-10",
+                "W2026-11",
+                "W2026-12",
+                "W2026-13",
+                "W2026-14",
+                "W2026-15",
+                "W2026-16",
+                "W2026-17",
+                "W2026-18",
+                "W2026-19",
+                "W2026-20",
+                "W2026-21",
+                "W2026-22",
+                "W2026-23",
+                "W2026-24",
+                "W2026-25",
+                "W2026-26",
+                "W2026-27",
+                "W2026-28",
+                "W2026-29",
+                "W2026-30"
             ],
-            "components": {
-                "Engine": 2,
-                "Chassis": 2,
-                "Hydraulics": 4,
-                "Electronics": 2,
-                "Tires": 8
-            }
+            "currentWeekIndex": 0
         },
-        "2": {
-            "orderNumber": 2,
-            "productId": "FG3",
-            "orderPromiseDate": "2025-07-07T00:00:00.000Z",
-            "orderQty": 4,
-            "revenue": 48000,
-            "cost": 40000,
-            "customerPriority": "Medium",
-            "operations": [
-                "100",
-                "200",
-                "300",
-                "400"
-            ],
-            "components": {
-                "Engine": 4,
-                "Chassis": 4,
-                "Hydraulics": 4,
-                "Electronics": 4,
-                "Tires": 16,
-                "Battery": 4
-            }
-        },
-        "3": {
-            "orderNumber": 3,
-            "productId": "FG4",
-            "orderPromiseDate": "2025-07-10T00:00:00.000Z",
-            "orderQty": 1,
-            "revenue": 15000,
-            "cost": 14000,
-            "customerPriority": "High",
-            "operations": [
-                "100",
-                "200",
-                "300",
-                "400"
-            ],
-            "components": {
-                "Engine": 1,
-                "Chassis": 1,
-                "Hydraulics": 2,
-                "Electronics": 1,
-                "Tires": 4
-            }
-        },
-        "4": {
-            "orderNumber": 4,
-            "productId": "FG2",
-            "orderPromiseDate": "2025-08-14T00:00:00.000Z",
-            "orderQty": 2,
-            "revenue": 20000,
-            "cost": 18000,
-            "customerPriority": "High",
-            "operations": [
-                "100",
-                "200",
-                "300",
-                "400"
-            ],
-            "components": {
-                "Engine": 2,
-                "Chassis": 2,
-                "Hydraulics": 4,
-                "Electronics": 2,
-                "Tires": 8
-            }
-        },
-        "5": {
-            "orderNumber": 5,
-            "productId": "FG3",
-            "orderPromiseDate": "2025-07-03T00:00:00.000Z",
-            "orderQty": 4,
-            "revenue": 48000,
-            "cost": 40000,
-            "customerPriority": "Medium",
-            "operations": [
-                "100",
-                "200",
-                "300",
-                "400"
-            ],
-            "components": {
-                "Engine": 4,
-                "Chassis": 4,
-                "Hydraulics": 8,
-                "Electronics": 4,
-                "Tires": 16
-            }
-        },
-        "6": {
-            "orderNumber": 6,
-            "productId": "FG1",
-            "orderPromiseDate": "2025-07-03T00:00:00.000Z",
-            "orderQty": 3,
-            "revenue": 15000,
-            "cost": 13500,
-            "customerPriority": "High",
-            "operations": [
-                "100",
-                "200",
-                "300",
-                "400"
-            ],
-            "components": {
-                "Engine": 3,
-                "Chassis": 3,
-                "Hydraulics": 6,
-                "Electronics": 3,
-                "Tires": 12
-            }
-        },
-        "7": {
-            "orderNumber": 7,
-            "productId": "FG1",
-            "orderPromiseDate": "2025-07-07T00:00:00.000Z",
-            "orderQty": 4,
-            "revenue": 20000,
-            "cost": 18000,
-            "customerPriority": "Medium",
-            "operations": [
-                "100",
-                "200",
-                "300",
-                "400"
-            ],
-            "components": {
-                "Engine": 4,
-                "Chassis": 4,
-                "Hydraulics": 4,
-                "Electronics": 4,
-                "Tires": 16,
-                "Battery": 4
-            }
-        },
-        "8": {
-            "orderNumber": 8,
-            "productId": "FG5",
-            "orderPromiseDate": "2025-08-07T00:00:00.000Z",
-            "orderQty": 4,
-            "revenue": 80000,
-            "cost": 60000,
-            "customerPriority": "High",
-            "operations": [
-                "100",
-                "200",
-                "300",
-                "400"
-            ],
-            "components": {
-                "Engine": 4,
-                "Chassis": 4,
-                "Hydraulics": 4,
-                "Electronics": 4,
-                "Tires": 16,
-                "Battery": 4
-            }
-        },
-        "9": {
-            "orderNumber": 9,
-            "productId": "FG4",
-            "orderPromiseDate": "2025-08-14T00:00:00.000Z",
-            "orderQty": 4,
-            "revenue": 60000,
-            "cost": 56000,
-            "customerPriority": "Medium",
-            "operations": [
-                "100",
-                "200",
-                "300",
-                "400"
-            ],
-            "components": {
-                "Engine": 4,
-                "Chassis": 4,
-                "Hydraulics": 4,
-                "Electronics": 4,
-                "Tires": 16,
-                "Battery": 4
-            }
-        },
-        "10": {
-            "orderNumber": 10,
-            "productId": "FG5",
-            "orderPromiseDate": "2025-07-15T00:00:00.000Z",
-            "orderQty": 2,
-            "revenue": 40000,
-            "cost": 30000,
-            "customerPriority": "Medium",
-            "operations": [
-                "100",
-                "200",
-                "300",
-                "400"
-            ],
-            "components": {
-                "Engine": 2,
-                "Chassis": 2,
-                "Hydraulics": 2,
-                "Electronics": 2,
-                "Tires": 8,
-                "Battery": 2
-            }
-        }
-    },
-    "penaltyRules": {
-        "High_FG1": {
-            "customerPriority": "High",
-            "productId": "FG1",
-            "lateDeliveryPenalty": 100,
-            "noFulfillmentPenalty": 1000
-        },
-        "High_FG2": {
-            "customerPriority": "High",
-            "productId": "FG2",
-            "lateDeliveryPenalty": 50,
-            "noFulfillmentPenalty": 1000
-        },
-        "High_FG3": {
-            "customerPriority": "High",
-            "productId": "FG3",
-            "lateDeliveryPenalty": 150,
-            "noFulfillmentPenalty": 1000
-        },
-        "High_FG4": {
-            "customerPriority": "High",
-            "productId": "FG4",
-            "lateDeliveryPenalty": 200,
-            "noFulfillmentPenalty": 1000
-        },
-        "High_FG5": {
-            "customerPriority": "High",
-            "productId": "FG5",
-            "lateDeliveryPenalty": 250,
-            "noFulfillmentPenalty": 1000
-        },
-        "Medium_FG1": {
-            "customerPriority": "Medium",
-            "productId": "FG1",
-            "lateDeliveryPenalty": 50,
-            "noFulfillmentPenalty": 500
-        },
-        "Medium_FG2": {
-            "customerPriority": "Medium",
-            "productId": "FG2",
-            "lateDeliveryPenalty": 50,
-            "noFulfillmentPenalty": 500
-        },
-        "Medium_FG3": {
-            "customerPriority": "Medium",
-            "productId": "FG3",
-            "lateDeliveryPenalty": 50,
-            "noFulfillmentPenalty": 500
-        },
-        "Medium_FG4": {
-            "customerPriority": "Medium",
-            "productId": "FG4",
-            "lateDeliveryPenalty": 50,
-            "noFulfillmentPenalty": 500
-        },
-        "Medium_FG5": {
-            "customerPriority": "Medium",
-            "productId": "FG5",
-            "lateDeliveryPenalty": 50,
-            "noFulfillmentPenalty": 500
-        },
-        "Low_FG1": {
-            "customerPriority": "Low",
-            "productId": "FG1",
-            "lateDeliveryPenalty": 25,
-            "noFulfillmentPenalty": 200
-        },
-        "Low_FG2": {
-            "customerPriority": "Low",
-            "productId": "FG2",
-            "lateDeliveryPenalty": 25,
-            "noFulfillmentPenalty": 200
-        },
-        "Low_FG3": {
-            "customerPriority": "Low",
-            "productId": "FG3",
-            "lateDeliveryPenalty": 25,
-            "noFulfillmentPenalty": 200
-        },
-        "Low_FG4": {
-            "customerPriority": "Low",
-            "productId": "FG4",
-            "lateDeliveryPenalty": 25,
-            "noFulfillmentPenalty": 200
-        },
-        "Low_FG5": {
-            "customerPriority": "Low",
-            "productId": "FG5",
-            "lateDeliveryPenalty": 25,
-            "noFulfillmentPenalty": 200
-        }
-    },
-    "componentAvailability": {
-        "Engine": {
-            "componentId": "Engine",
-            "weeklyAvailability": {
-                "W2025-22": 140,
-                "W2025-23": 62,
-                "W2025-24": 146,
-                "W2025-25": 182,
-                "W2025-26": 52,
-                "W2025-27": 190,
-                "W2025-28": 58,
-                "W2025-29": 161,
-                "W2025-30": 148,
-                "W2025-31": 70,
-                "W2025-32": 53,
-                "W2025-33": 81,
-                "W2025-34": 154,
-                "W2025-35": 194,
-                "W2025-36": 102,
-                "W2025-37": 188,
-                "W2025-38": 130,
-                "W2025-39": 166,
-                "W2025-40": 111,
-                "W2025-41": 127,
-                "W2025-42": 143,
-                "W2025-43": 138,
-                "W2025-44": 139,
-                "W2025-45": 84,
-                "W2025-46": 99,
-                "W2025-47": 194,
-                "W2025-48": 89,
-                "W2025-49": 101,
-                "W2025-50": 148,
-                "W2025-51": 52,
-                "W2025-52": 135,
-                "W2026-01": 149,
-                "W2026-02": 161,
-                "W2026-03": 86,
-                "W2026-04": 190,
-                "W2026-05": 71,
-                "W2026-06": 106,
-                "W2026-07": 175,
-                "W2026-08": 136,
-                "W2026-09": 166,
-                "W2026-10": 108,
-                "W2026-11": 114,
-                "W2026-12": 117,
-                "W2026-13": 185,
-                "W2026-14": 111,
-                "W2026-15": 144,
-                "W2026-16": 160,
-                "W2026-17": 94,
-                "W2026-18": 110,
-                "W2026-19": 93,
-                "W2026-20": 170,
-                "W2026-21": 149
-            }
-        },
-        "Chassis": {
-            "componentId": "Chassis",
-            "weeklyAvailability": {
-                "W2025-22": 56,
-                "W2025-23": 53,
-                "W2025-24": 67,
-                "W2025-25": 113,
-                "W2025-26": 172,
-                "W2025-27": 142,
-                "W2025-28": 170,
-                "W2025-29": 169,
-                "W2025-30": 167,
-                "W2025-31": 114,
-                "W2025-32": 116,
-                "W2025-33": 134,
-                "W2025-34": 182,
-                "W2025-35": 85,
-                "W2025-36": 146,
-                "W2025-37": 97,
-                "W2025-38": 60,
-                "W2025-39": 60,
-                "W2025-40": 57,
-                "W2025-41": 120,
-                "W2025-42": 75,
-                "W2025-43": 161,
-                "W2025-44": 106,
-                "W2025-45": 186,
-                "W2025-46": 83,
-                "W2025-47": 159,
-                "W2025-48": 78,
-                "W2025-49": 139,
-                "W2025-50": 199,
-                "W2025-51": 97,
-                "W2025-52": 60,
-                "W2026-01": 109,
-                "W2026-02": 67,
-                "W2026-03": 181,
-                "W2026-04": 196,
-                "W2026-05": 129,
-                "W2026-06": 137,
-                "W2026-07": 86,
-                "W2026-08": 115,
-                "W2026-09": 146,
-                "W2026-10": 57,
-                "W2026-11": 144,
-                "W2026-12": 150,
-                "W2026-13": 119,
-                "W2026-14": 100,
-                "W2026-15": 102,
-                "W2026-16": 64,
-                "W2026-17": 68,
-                "W2026-18": 66,
-                "W2026-19": 192,
-                "W2026-20": 147,
-                "W2026-21": 82
-            }
-        },
-        "Hydraulics": {
-            "componentId": "Hydraulics",
-            "weeklyAvailability": {
-                "W2025-22": 119,
-                "W2025-23": 140,
-                "W2025-24": 129,
-                "W2025-25": 102,
-                "W2025-26": 124,
-                "W2025-27": 173,
-                "W2025-28": 91,
-                "W2025-29": 167,
-                "W2025-30": 164,
-                "W2025-31": 65,
-                "W2025-32": 198,
-                "W2025-33": 188,
-                "W2025-34": 191,
-                "W2025-35": 133,
-                "W2025-36": 96,
-                "W2025-37": 80,
-                "W2025-38": 53,
-                "W2025-39": 128,
-                "W2025-40": 100,
-                "W2025-41": 71,
-                "W2025-42": 117,
-                "W2025-43": 168,
-                "W2025-44": 113,
-                "W2025-45": 155,
-                "W2025-46": 91,
-                "W2025-47": 65,
-                "W2025-48": 179,
-                "W2025-49": 185,
-                "W2025-50": 135,
-                "W2025-51": 63,
-                "W2025-52": 173,
-                "W2026-01": 155,
-                "W2026-02": 97,
-                "W2026-03": 180,
-                "W2026-04": 126,
-                "W2026-05": 195,
-                "W2026-06": 80,
-                "W2026-07": 182,
-                "W2026-08": 82,
-                "W2026-09": 126,
-                "W2026-10": 150,
-                "W2026-11": 169,
-                "W2026-12": 196,
-                "W2026-13": 69,
-                "W2026-14": 168,
-                "W2026-15": 69,
-                "W2026-16": 179,
-                "W2026-17": 102,
-                "W2026-18": 102,
-                "W2026-19": 139,
-                "W2026-20": 95,
-                "W2026-21": 105
-            }
-        },
-        "Electronics": {
-            "componentId": "Electronics",
-            "weeklyAvailability": {
-                "W2025-22": 187,
-                "W2025-23": 53,
-                "W2025-24": 189,
-                "W2025-25": 107,
-                "W2025-26": 106,
-                "W2025-27": 70,
-                "W2025-28": 178,
-                "W2025-29": 141,
-                "W2025-30": 120,
-                "W2025-31": 123,
-                "W2025-32": 164,
-                "W2025-33": 161,
-                "W2025-34": 197,
-                "W2025-35": 147,
-                "W2025-36": 182,
-                "W2025-37": 135,
-                "W2025-38": 118,
-                "W2025-39": 128,
-                "W2025-40": 150,
-                "W2025-41": 64,
-                "W2025-42": 52,
-                "W2025-43": 140,
-                "W2025-44": 54,
-                "W2025-45": 120,
-                "W2025-46": 53,
-                "W2025-47": 142,
-                "W2025-48": 172,
-                "W2025-49": 187,
-                "W2025-50": 198,
-                "W2025-51": 167,
-                "W2025-52": 94,
-                "W2026-01": 133,
-                "W2026-02": 51,
-                "W2026-03": 54,
-                "W2026-04": 89,
-                "W2026-05": 86,
-                "W2026-06": 172,
-                "W2026-07": 67,
-                "W2026-08": 179,
-                "W2026-09": 130,
-                "W2026-10": 73,
-                "W2026-11": 53,
-                "W2026-12": 121,
-                "W2026-13": 176,
-                "W2026-14": 56,
-                "W2026-15": 52,
-                "W2026-16": 92,
-                "W2026-17": 144,
-                "W2026-18": 185,
-                "W2026-19": 142,
-                "W2026-20": 153,
-                "W2026-21": 92
-            }
-        },
-        "Tires": {
-            "componentId": "Tires",
-            "weeklyAvailability": {
-                "W2025-22": 75,
-                "W2025-23": 139,
-                "W2025-24": 93,
-                "W2025-25": 173,
-                "W2025-26": 154,
-                "W2025-27": 138,
-                "W2025-28": 87,
-                "W2025-29": 140,
-                "W2025-30": 133,
-                "W2025-31": 75,
-                "W2025-32": 140,
-                "W2025-33": 164,
-                "W2025-34": 51,
-                "W2025-35": 87,
-                "W2025-36": 130,
-                "W2025-37": 127,
-                "W2025-38": 172,
-                "W2025-39": 114,
-                "W2025-40": 77,
-                "W2025-41": 77,
-                "W2025-42": 159,
-                "W2025-43": 166,
-                "W2025-44": 52,
-                "W2025-45": 193,
-                "W2025-46": 188,
-                "W2025-47": 78,
-                "W2025-48": 126,
-                "W2025-49": 62,
-                "W2025-50": 71,
-                "W2025-51": 63,
-                "W2025-52": 78,
-                "W2026-01": 84,
-                "W2026-02": 109,
-                "W2026-03": 195,
-                "W2026-04": 85,
-                "W2026-05": 97,
-                "W2026-06": 107,
-                "W2026-07": 152,
-                "W2026-08": 72,
-                "W2026-09": 152,
-                "W2026-10": 126,
-                "W2026-11": 157,
-                "W2026-12": 102,
-                "W2026-13": 88,
-                "W2026-14": 110,
-                "W2026-15": 124,
-                "W2026-16": 195,
-                "W2026-17": 124,
-                "W2026-18": 194,
-                "W2026-19": 69,
-                "W2026-20": 112,
-                "W2026-21": 119
-            }
-        },
-        "Battery": {
-            "componentId": "Battery",
-            "weeklyAvailability": {
-                "W2025-22": 122,
-                "W2025-23": 109,
-                "W2025-24": 105,
-                "W2025-25": 153,
-                "W2025-26": 193,
-                "W2025-27": 172,
-                "W2025-28": 138,
-                "W2025-29": 188,
-                "W2025-30": 85,
-                "W2025-31": 71,
-                "W2025-32": 191,
-                "W2025-33": 169,
-                "W2025-34": 174,
-                "W2025-35": 185,
-                "W2025-36": 161,
-                "W2025-37": 160,
-                "W2025-38": 84,
-                "W2025-39": 141,
-                "W2025-40": 106,
-                "W2025-41": 199,
-                "W2025-42": 133,
-                "W2025-43": 139,
-                "W2025-44": 126,
-                "W2025-45": 109,
-                "W2025-46": 52,
-                "W2025-47": 110,
-                "W2025-48": 76,
-                "W2025-49": 151,
-                "W2025-50": 50,
-                "W2025-51": 107,
-                "W2025-52": 197,
-                "W2026-01": 144,
-                "W2026-02": 196,
-                "W2026-03": 54,
-                "W2026-04": 153,
-                "W2026-05": 85,
-                "W2026-06": 91,
-                "W2026-07": 108,
-                "W2026-08": 50,
-                "W2026-09": 163,
-                "W2026-10": 141,
-                "W2026-11": 166,
-                "W2026-12": 88,
-                "W2026-13": 97,
-                "W2026-14": 156,
-                "W2026-15": 73,
-                "W2026-16": 199,
-                "W2026-17": 108,
-                "W2026-18": 143,
-                "W2026-19": 123,
-                "W2026-20": 146,
-                "W2026-21": 115
-            }
-        }
-    },
-    "priorityDeliveryCriteria": {
-        "Critical": {
-            "customerPriority": "Critical",
-            "maxDelayDays": 7,
-            "penaltyMultiplier": 4,
-            "description": "Must be on time or early"
-        },
-        "High": {
-            "customerPriority": "High",
-            "maxDelayDays": 7,
-            "penaltyMultiplier": 3,
-            "description": "Must be on time or early"
-        },
-        "Medium": {
-            "customerPriority": "Medium",
-            "maxDelayDays": 7,
-            "penaltyMultiplier": 2,
-            "description": "Up to 1 week delay allowed"
-        },
-        "Low": {
-            "customerPriority": "Low",
-            "maxDelayDays": 14,
-            "penaltyMultiplier": 1,
-            "description": "Up to 2 weeks delay allowed"
-        }
-    },
-    "weeks": [
-        "W2025-26",
-        "W2025-27",
-        "W2025-28",
-        "W2025-29",
-        "W2025-30",
-        "W2025-31",
-        "W2025-32",
-        "W2025-33",
-        "W2025-34",
-        "W2025-35",
-        "W2025-36",
-        "W2025-37",
-        "W2025-38",
-        "W2025-39",
-        "W2025-40",
-        "W2025-41",
-        "W2025-42",
-        "W2025-43",
-        "W2025-44",
-        "W2025-45",
-        "W2025-46",
-        "W2025-47",
-        "W2025-48",
-        "W2025-49",
-        "W2025-50",
-        "W2025-51",
-        "W2025-52",
-        "W2025-01",
-        "W2026-02",
-        "W2026-03",
-        "W2026-04",
-        "W2026-05",
-        "W2026-06",
-        "W2026-07",
-        "W2026-08",
-        "W2026-09",
-        "W2026-10",
-        "W2026-11",
-        "W2026-12",
-        "W2026-13",
-        "W2026-14",
-        "W2026-15",
-        "W2026-16",
-        "W2026-17",
-        "W2026-18",
-        "W2026-19",
-        "W2026-20",
-        "W2026-21",
-        "W2026-22",
-        "W2026-23",
-        "W2026-24",
-        "W2026-25"
-    ],
-    "currentWeekIndex": 0
-},   
-     "populationSize": 250,
-     "generations": 100,
-     "mutationRate": 0.2,
-     "crossoverRate": 0.8,
-     "promiseDatePreference":0.7,
-     "timingVarianceWeeks":3,
-     "unnecessaryDelayPenalty":100,
-     "perfectTimingBonus":50  
-}
+        "products": 5,
+        "salesOrders": 50,
+        "lineRestrictions": 6,
+        "planningStartDate": "2025-07-28",
+        "minEarlyDeliveryDays": 7
+    }
+
+
 
 
 ###
@@ -989,7 +1867,7 @@ Content-Type: application/json
 	 "fullJobId": "ed60d55e-139c-4b13-a4a8-a8bc0c49d0f7"
 }
 ###
-GET http://localhost:3030/api/planning/downloadPivot-results-daily
+GET http://localhost:3030/api/planning/download-results
 Content-Type: application/json
 
 {

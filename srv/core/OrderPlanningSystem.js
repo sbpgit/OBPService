@@ -368,5 +368,87 @@ class OrderPlanningSystem {
       }
     }
   }
+
+  /**
+   * Validates if the system has sufficient capacity to proceed with optimization
+   * @returns {Object} validation result with status and details
+   */
+  validateCapacityForOptimization() {
+    const validationResult = {
+      isValid: true,
+      issues: [],
+      criticalIssues: [],
+      totalLines: 0,
+      zeroCapacityLines: 0,
+      nullCapacityLines: 0,
+      hasAnyValidCapacity: false
+    };
+
+    // Check each line restriction
+    for (const [lineName, restriction] of this.lineRestrictions.entries()) {
+      validationResult.totalLines++;
+      
+      if (!restriction.weeklyCapacity || Object.keys(restriction.weeklyCapacity).length === 0) {
+        validationResult.nullCapacityLines++;
+        validationResult.criticalIssues.push(`Line '${lineName}' has no capacity data`);
+        continue;
+      }
+
+      // Check if all weeks have zero or null capacity
+      const capacityValues = Object.values(restriction.weeklyCapacity);
+      const hasAnyPositiveCapacity = capacityValues.some(capacity => {
+        const cap = parseInt(capacity);
+        return !isNaN(cap) && cap > 0;
+      });
+
+      if (!hasAnyPositiveCapacity) {
+        validationResult.zeroCapacityLines++;
+        validationResult.criticalIssues.push(`Line '${lineName}' has zero capacity for all weeks`);
+      } else {
+        validationResult.hasAnyValidCapacity = true;
+        
+        // Check for individual zero capacity weeks
+        const zeroWeeks = [];
+        for (const [week, capacity] of Object.entries(restriction.weeklyCapacity)) {
+          const cap = parseInt(capacity);
+          if (isNaN(cap) || cap <= 0) {
+            zeroWeeks.push(week);
+          }
+        }
+        
+        if (zeroWeeks.length > 0) {
+          validationResult.issues.push(`Line '${lineName}' has zero capacity in weeks: ${zeroWeeks.join(', ')}`);
+        }
+      }
+    }
+
+    // Determine if optimization should proceed
+    if (validationResult.totalLines === 0) {
+      validationResult.isValid = false;
+      validationResult.criticalIssues.push('No line restrictions defined');
+    } else if (!validationResult.hasAnyValidCapacity) {
+      validationResult.isValid = false;
+      validationResult.criticalIssues.push('No lines have any positive capacity - optimization cannot proceed');
+    } else if (validationResult.zeroCapacityLines + validationResult.nullCapacityLines === validationResult.totalLines) {
+      validationResult.isValid = false;
+      validationResult.criticalIssues.push('All lines have zero or null capacity - optimization cannot proceed');
+    }
+
+    return validationResult;
+  }
+
+  /**
+   * Get a summary of capacity issues for logging/display
+   */
+  getCapacityValidationSummary() {
+    const validation = this.validateCapacityForOptimization();
+    
+    return {
+      canOptimize: validation.isValid,
+      summary: `Lines: ${validation.totalLines}, Valid: ${validation.totalLines - validation.zeroCapacityLines - validation.nullCapacityLines}, Zero: ${validation.zeroCapacityLines}, Null: ${validation.nullCapacityLines}`,
+      issues: validation.issues,
+      criticalIssues: validation.criticalIssues
+    };
+  }
 }
 module.exports = OrderPlanningSystem;

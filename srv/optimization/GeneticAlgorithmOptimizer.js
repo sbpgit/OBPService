@@ -6,7 +6,14 @@ const Logger = require(path.resolve(__dirname, '../utils/Logger'));
 
 class GeneticAlgorithmOptimizer {
   constructor(planningSystem, options = {}) {
+
+    
     this.system = planningSystem;
+    // Validate system capacity before initializing optimizer
+    const capacityValidation = this.system.validateCapacityForOptimization();
+    if (!capacityValidation.isValid) {
+      throw new Error(`Cannot initialize optimizer: ${capacityValidation.criticalIssues.join(', ')}`);
+    }
     this.populationSize = options.populationSize || 100;
     this.generations = options.generations || 50;
     this.mutationRate = options.mutationRate || 0.1;
@@ -265,9 +272,13 @@ class GeneticAlgorithmOptimizer {
     const earliestWeek = this.system.getEarliestSchedulableWeekIndex();
 
     // Initialize capacity tracking
-    for (const [lineName] of this.system.lineRestrictions.keys()) {
+    // for (const [lineName] of this.system.lineRestrictions.keys()) {
+    //   capacityUsage[lineName] = {};
+    // }
+    for (const key of this.system.lineRestrictions.keys()) {
+      const lineName = key; // or just use 'key' directly
       capacityUsage[lineName] = {};
-    }
+  }
 
     for (const [orderNumber, assignment] of Object.entries(individual)) {
       const order = this.system.salesOrders.get(orderNumber);

@@ -105,6 +105,19 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     if (req.file) {
       await fs.unlink(req.file.path).catch(() => { });
     }
+     // Check if it's a capacity validation error
+     if (error.message.includes('validation failed') || error.message.includes('zero or null capacity')) {
+      return res.status(400).json({
+        success: false,
+        error: 'File validation failed - insufficient capacity data',
+        message: error.message,
+        suggestions: [
+          'Check Weekly_Capacity sheet has positive values',
+          'Verify Line_Restrictions have Avg_Weekly_Capacity > 0',
+          'Ensure all capacity data is properly formatted'
+        ]
+      });
+    }
 
     logger.error('Error processing uploaded file:', error);
     res.status(500).json({
@@ -130,6 +143,45 @@ router.post('/optimize', async (req, res) => {
     ? router.createPlanningSystemFromJSON(planningSystemJSON)
     : new OrderPlanningSystem(planningStartDate, minEarlyDeliveryDays);
   if (!planningSystemJSON) planningSystem.loadSampleData();
+
+
+ // CRITICAL: Validate capacity before starting optimization
+  const capacityValidation = planningSystem.validateCapacityForOptimization();
+  
+  if (!capacityValidation.isValid) {
+    console.error('🚫 Optimization cannot proceed - Capacity validation failed');
+    console.error('Critical Issues:', capacityValidation.criticalIssues);
+    
+    return res.status(400).json({
+      success: false,
+      error: 'Cannot start optimization - insufficient capacity data',
+      details: {
+        criticalIssues: capacityValidation.criticalIssues,
+        issues: capacityValidation.issues,
+        summary: {
+          totalLines: capacityValidation.totalLines,
+          zeroCapacityLines: capacityValidation.zeroCapacityLines,
+          nullCapacityLines: capacityValidation.nullCapacityLines,
+          hasAnyValidCapacity: capacityValidation.hasAnyValidCapacity
+        }
+      },
+      message: 'Please check your capacity data. All line restrictions have zero or null capacity.',
+      suggestions: [
+        'Verify Weekly_Capacity sheet has positive values',
+        'Check Line_Restrictions have Avg_Weekly_Capacity > 0',
+        'Ensure capacity data is properly formatted (numbers, not text)'
+      ]
+    });
+  }
+
+  // Log capacity validation summary
+  const summary = planningSystem.getCapacityValidationSummary();
+  console.log('✅ Capacity Validation Passed:', summary.summary);
+  if (summary.issues.length > 0) {
+    console.warn('⚠️ Capacity Issues Found:', summary.issues);
+  }
+
+
   const optimizer = new GeneticAlgorithmOptimizer(planningSystem, {
     populationSize, generations, mutationRate, crossoverRate,
     //New code added on 23/06/2025- Pradeep
@@ -357,14 +409,50 @@ router.createPlanningSystemFromExcel = async function (data, planningStartDate, 
 
           // Parse date
           let promiseDate;
+          // try {
+          //   promiseDate = moment(order.Order_Promise_Date || order.orderPromiseDate || order["Order Promise Date"]).toDate();
+          //   if (!moment(promiseDate).isValid()) {
+          //     promiseDate = moment().add(7, 'days').toDate(); // Default to 1 week from now
+          //   }
+          // } catch (error) {
+          //   promiseDate = moment().add(7, 'days').toDate();
+          // }
+          function parseDate(dateValue) {
+            // If it's already a valid Date object
+            if (dateValue instanceof Date && !isNaN(dateValue)) {
+              return dateValue;
+            }
+            
+            // Convert to string for processing
+            const dateStr = String(dateValue);
+            
+            // Check if it's a number (Excel serial date)
+            if (!isNaN(dateValue) && !isNaN(parseFloat(dateValue))) {
+              const num = parseFloat(dateValue);
+              // Excel serial dates are typically > 1000
+              if (num > 1000) {
+                // Convert Excel serial date to JS Date
+                const excelEpoch = new Date(1899, 11, 30);
+                return new Date(excelEpoch.getTime() + (num * 24 * 60 * 60 * 1000));
+              }
+            }
+            
+            // Try parsing as regular date string
+            return moment(dateStr).toDate();
+          }
+          
+          // Updated code:
           try {
-            promiseDate = moment(order.Order_Promise_Date || order.orderPromiseDate || order["Order Promise Date"]).toDate();
+            const rawDate = order.Order_Promise_Date || order.orderPromiseDate || order["Order Promise Date"];
+            promiseDate = parseDate(rawDate);
+            
             if (!moment(promiseDate).isValid()) {
-              promiseDate = moment().add(7, 'days').toDate(); // Default to 1 week from now
+              promiseDate = moment().add(7, 'days').toDate();
             }
           } catch (error) {
             promiseDate = moment().add(7, 'days').toDate();
           }
+          
 
           planningSystem.addSalesOrder({
             orderNumber: order.Order_Number || order.orderNumber || order["Order Number"] || `SO_${index}`,
@@ -446,6 +534,22 @@ router.createPlanningSystemFromExcel = async function (data, planningStartDate, 
 
     // Ensure data integrity
     planningSystem.ensureDataIntegrity();
+
+    // CRITICAL: Validate capacity after loading all data
+    const capacityValidation = planningSystem.validateCapacityForOptimization();
+    
+    if (!capacityValidation.isValid) {
+      const errorMessage = `Excel file validation failed: ${capacityValidation.criticalIssues.join(', ')}`;
+      console.error('🚫 Excel Validation Failed:', errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    // Log validation summary
+    const summary = planningSystem.getCapacityValidationSummary();
+    console.log('✅ Excel Capacity Validation Passed:', summary.summary);
+    if (summary.issues.length > 0) {
+      console.warn('⚠️ Excel Capacity Issues Found:', summary.issues);
+    }
 
     return planningSystem;
 
@@ -904,7 +1008,7 @@ router.post('/optimizeDaily', async (req, res) => {
     populationSize, generations, mutationRate, crossoverRate,
     //New code added on 23/06/2025- Pradeep
     promiseDatePreference: req.body.promiseDatePreference || 0.7,
-    timingVarianceWeeks: req.body.timingVarianceWeeks || 3,
+    timingVarianceDays: req.body.timingVarianceDays || 7,
     unnecessaryDelayPenalty: req.body.unnecessaryDelayPenalty || 100,
     perfectTimingBonus: req.body.perfectTimingBonus || 50
     //New code added on 23/06/2025- Pradeep
