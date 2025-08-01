@@ -539,7 +539,7 @@ router.createPlanningSystemFromExcel = async function (data, planningStartDate, 
     const capacityValidation = planningSystem.validateCapacityForOptimization();
     
     if (!capacityValidation.isValid) {
-      const errorMessage = `Excel file validation failed: ${capacityValidation.criticalIssues.join(', ')}`;
+      const errorMessage = `Excel file validation failed: <br>${capacityValidation.criticalIssues.join('<br>')}`;
       console.error('🚫 Excel Validation Failed:', errorMessage);
       throw new Error(errorMessage);
     }
@@ -757,6 +757,19 @@ router.post('/uploadDaily', upload.single('file'), async (req, res) => {
     // Clean up uploaded file on error
     if (req.file) {
       await fs.unlink(req.file.path).catch(() => { });
+    }
+    // Check if it's a capacity validation error
+    if (error.message.includes('validation failed') || error.message.includes('zero or null capacity')) {
+      return res.status(400).json({
+        success: false,
+        error: 'File validation failed - insufficient capacity data',
+        message: error.message,
+        suggestions: [
+          'Check Weekly_Capacity sheet has positive values',
+          'Verify Line_Restrictions have Avg_Weekly_Capacity > 0',
+          'Ensure all capacity data is properly formatted'
+        ]
+      });
     }
 
     logger.error('Error processing uploaded file:', error);
@@ -980,6 +993,20 @@ router.createPlanningSystemFromExcelDaily = async function (data, planningStartD
 
     // Ensure data integrity
     // planningSystem.ensureDataIntegrity();
+    const capacityValidation = planningSystem.validateCapacityForOptimization();
+    
+    if (!capacityValidation.isValid) {
+      const errorMessage = `Excel file validation failed: \n${capacityValidation.criticalIssues.join('\n')}`;
+      console.error('🚫 Excel Validation Failed:', errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    // Log validation summary
+    const summary = planningSystem.getCapacityValidationSummary();
+    console.log('✅ Excel Capacity Validation Passed:', summary.summary);
+    if (summary.issues.length > 0) {
+      console.warn('⚠️ Excel Capacity Issues Found:', summary.issues);
+    }
 
     return planningSystem;
 
@@ -1004,6 +1031,41 @@ router.post('/optimizeDaily', async (req, res) => {
     ? router.createPlanningSystemFromJSONDaily(planningSystemJSON)
     : new OrderPlanningSystem(planningStartDate, minEarlyDeliveryDays);
   if (!planningSystemJSON) planningSystem.loadSampleData();
+  // // CRITICAL: Validate capacity before starting optimization
+  const capacityValidation = planningSystem.validateCapacityForOptimization();
+  
+  if (!capacityValidation.isValid) {
+    console.error('🚫 Optimization cannot proceed - Capacity validation failed');
+    console.error('Critical Issues:', capacityValidation.criticalIssues);
+    
+    return res.status(400).json({
+      success: false,
+      error: 'Cannot start optimization - insufficient capacity data',
+      details: {
+        criticalIssues: capacityValidation.criticalIssues,
+        issues: capacityValidation.issues,
+        summary: {
+          totalLines: capacityValidation.totalLines,
+          zeroCapacityLines: capacityValidation.zeroCapacityLines,
+          nullCapacityLines: capacityValidation.nullCapacityLines,
+          hasAnyValidCapacity: capacityValidation.hasAnyValidCapacity
+        }
+      },
+      message: 'Please check your capacity data. All line restrictions have zero or null capacity.',
+      suggestions: [
+        'Verify Weekly_Capacity sheet has positive values',
+        'Check Line_Restrictions have Avg_Weekly_Capacity > 0',
+        'Ensure capacity data is properly formatted (numbers, not text)'
+      ]
+    });
+  }
+
+  // // Log capacity validation summary
+  const summary = planningSystem.getCapacityValidationSummary();
+  console.log('✅ Capacity Validation Passed:', summary.summary);
+  if (summary.issues.length > 0) {
+    console.warn('⚠️ Capacity Issues Found:', summary.issues);
+  }
   const optimizer = new GeneticAlgorithmOptimizerDaily(planningSystem, {
     populationSize, generations, mutationRate, crossoverRate,
     //New code added on 23/06/2025- Pradeep
